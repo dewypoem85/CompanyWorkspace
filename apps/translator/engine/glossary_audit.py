@@ -136,7 +136,7 @@ def main():
                 trans = (r.get(LANG_COL[lang]) or "").strip()
                 if not trans:
                     continue
-                used = exp.lower() in clean(trans).lower()
+                used = eng.glossary_term_present(exp, clean(trans), lang)
                 term_rows[ko][lang].append((r, exp, used))
 
     all_ngrams = {}

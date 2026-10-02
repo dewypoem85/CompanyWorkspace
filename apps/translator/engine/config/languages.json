@@ -1,5 +1,5 @@
 {
-  "_readme": "언어/모델/키 문맥 규칙 설정. 새 언어는 languages 아래에 코드(예: POR)를 추가하면 코드 수정 없이 적용됩니다. 항목이 없으면 기본값을 쓰고 경고 로그를 남깁니다. 정규식 안의 유니코드는 \\u3040 처럼 JSON 이스케이프로 씁니다. 신규 언어 인식(헤더→코드)은 languages 항목에 name/display_name/aliases 를 넣으면 됩니다. normal_word 는 '통상/일반' 행 밀림 복구용 번역어.",
+  "_readme": "언어/모델/키 문맥 규칙 설정. 새 언어는 languages 아래에 코드(예: POR)를 추가하면 코드 수정 없이 적용됩니다. 항목이 없으면 기본값을 쓰고 경고 로그를 남깁니다. 정규식 안의 유니코드는 \\u3040 처럼 JSON 이스케이프로 씁니다. 신규 언어 인식(헤더→코드)은 languages 항목에 name/display_name/aliases 를 넣으면 됩니다. normal_word 는 '통상/일반' 행 밀림 복구용 번역어. glossary_match 는 용어집 적용 판정 방식(기본 exact=부분 문자열 일치, stem=성·수·격 변화가 있는 언어용 어간 일치).",
   "default_tone_guide": "- Translate accurately and naturally into {lang_full}, maintaining action RPG gaming conventions.",
   "default_contamination": {
     "pattern": "[\\u3040-\\u30ff\\u4e00-\\u9fff\\u3400-\\u4dbf]",
@@ -103,6 +103,7 @@
     "SPA": {
       "tone_guide": "- Ensure proper grammatical gender and number agreement (masculine/feminine, singular/plural) according to the noun context.",
       "glossary_col": "Spain",
+      "glossary_match": "stem",
       "contamination": {
         "pattern": "[\\u3040-\\u30ff\\u4e00-\\u9fff\\u3400-\\u4dbf]",
         "label": "일본어/한자"
@@ -126,6 +127,7 @@
     "GER": {
       "tone_guide": "- Use clear German gaming terminology. Keep compound words natural and fit UI constraints.",
       "glossary_col": "German",
+      "glossary_match": "stem",
       "contamination": {
         "pattern": "[\\u3040-\\u30ff\\u4e00-\\u9fff\\u3400-\\u4dbf]",
         "label": "일본어/한자"

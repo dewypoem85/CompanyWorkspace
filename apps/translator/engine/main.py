@@ -356,6 +356,60 @@ def _is_model_unavailable(code: int, body: str) -> bool:
     low = (body or "").lower()
     return code == 404 or (code in (400, 403) and "model" in low and any(x in low for x in ("not found", "does not exist", "not exist", "no access", "not have access", "deprecated", "invalid model", "not supported", "decommission")))
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# [오류 가시화] LLM 호출 실패 원인 기록 (키 마스킹·중복 억제) 및 영구 오류 판별
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+_SECRET_PAT = re.compile(r"((?:\bkey=|Bearer\s+|x-api-key[\"':=\s]+|api[_-]?key[\"':=\s]+))[A-Za-z0-9_\-.]{8,}", re.IGNORECASE)
+_LLM_ERR_NOTED = set()
+
+def _redact(text) -> str:
+    """로그·화면에 나가는 오류 문구에서 API 키/토큰 값을 가립니다."""
+    return _SECRET_PAT.sub(lambda m: m.group(1) + "***", str(text))
+
+def _http_error_body(e) -> str:
+    """HTTPError 본문을 한 번만 읽어 보관 (여러 곳에서 재사용)"""
+    body = getattr(e, "_cw_body", None)
+    if body is None:
+        try:
+            body = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            body = ""
+        try:
+            e._cw_body = body
+        except Exception:
+            pass
+    return body
+
+def _is_permanent_llm_error(e) -> bool:
+    """재시도·다른 모델 전환으로 해결되지 않는 오류 (키 인증 실패). 설정을 고치기 전에는 반복하지 않는다."""
+    if not isinstance(e, urllib.error.HTTPError):
+        return False
+    low = _http_error_body(e).lower()
+    if _is_model_unavailable(e.code, low):
+        return False
+    if e.code in (401, 403):
+        return True
+    return e.code == 400 and any(x in low for x in ("api key not valid", "invalid api key", "api_key_invalid", "invalid x-api-key", "authentication"))
+
+def _log_llm_error(provider: str, model: str, err):
+    """삼켜지던 LLM 호출 실패의 원인을 오류 종류별로 한 번만 남긴다 (반복 로그 폭주 방지)."""
+    if isinstance(err, urllib.error.HTTPError):
+        detail = f"HTTP {err.code}: {_http_error_body(err)[:200]}"
+        kind = f"http{err.code}"
+        if _is_permanent_llm_error(err):
+            detail += " → API 키/권한 설정을 확인하세요 (재시도해도 해결되지 않는 오류)"
+        elif err.code in (429, 503):
+            detail += " → 할당량 초과 또는 일시 과부하"
+    else:
+        detail = f"{type(err).__name__}: {err}"
+        kind = type(err).__name__
+    detail = _redact(detail).replace("\n", " ")
+    sig = (provider, model, kind, detail[:80])
+    if sig in _LLM_ERR_NOTED:
+        return
+    _LLM_ERR_NOTED.add(sig)
+    print(f"⚠️ [{provider}] '{model}' 호출 실패 — {detail}", flush=True)
+
 def _llm_urlopen(req, timeout, provider: str, api_key: str, model_pref: str):
     """urlopen 대체: 요청 본문의 model 을 후보 순서대로 시도 (모델 불가 오류일 때만 다음 후보)."""
     body = json.loads(req.data.decode("utf-8"))
@@ -377,7 +431,7 @@ def _llm_urlopen(req, timeout, provider: str, api_key: str, model_pref: str):
             if _is_model_unavailable(e.code, txt):
                 last_err = RuntimeError(f"모델 '{cand}' 사용 불가 ({e.code}): {txt[:120]}")
                 continue
-            raise RuntimeError(f"HTTP {e.code} ({cand}): {txt[:200]}")
+            raise RuntimeError(_redact(f"HTTP {e.code} ({cand}): {txt[:200]}"))
     raise last_err or RuntimeError("사용 가능한 모델 후보가 없습니다")
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -463,6 +517,32 @@ def get_glossary_translation(trans_dict: dict, target_lang: str) -> str:
             return str(val).strip()
     return ""
 
+def glossary_prompt_rules(texts, glossary: dict, target_lang: str, review: bool = False) -> list:
+    """프롬프트에 넣을 용어집 규칙 목록. 검증(glossary_missing)이 강제하는 용어는 조사가 붙은 짧은 용어까지
+    반드시 포함해 프롬프트와 검증 기준이 어긋나지 않게 하고, 그 외 부분 일치 용어는 기존 방식대로 참고용으로 추가한다."""
+    if not glossary:
+        return []
+    texts = [t for t in texts if t]
+    joined = " ".join(texts)
+    enforced = {}
+    for t in texts:
+        for ko, exp in glossary_terms_for(t, target_lang, glossary):
+            enforced.setdefault(ko, exp)
+    rules = []
+    for kor_term, trans_dict in sorted(glossary.items(), key=lambda x: len(x[0]), reverse=True):
+        if kor_term in enforced:
+            target_trans = enforced[kor_term]
+        else:
+            if kor_term not in joined:
+                continue
+            # 번역(생성) 프롬프트의 기존 규칙: 2글자 이하 용어는 공백으로 구분된 경우만 참고용으로 포함 (오탐 방지)
+            if not review and len(kor_term) <= 2 and f" {kor_term} " not in f" {joined} ":
+                continue
+            target_trans = get_glossary_translation(trans_dict, target_lang)
+        if target_trans:
+            rules.append(f"- '{kor_term}' (Preferred Glossary: '{target_trans}')" if review else f"- '{kor_term}' -> '{target_trans}'")
+    return rules
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 2. 제미나이(Gemini) 고속 배치 번역 함수 (Batch JSON)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -470,17 +550,7 @@ def translate_batch_with_gemini(items: dict[str, str], target_lang: str, api_key
     _, lang_full = resolve_language_info(target_lang)
 
     # 1. 고유명사 매칭 (글자 수가 긴 복합어 우선 매칭 & 단어 경계 안전 처리)
-    glossary_rules = []
-    if glossary:
-        all_sources_combined = " ".join(items.values())
-        sorted_glossary = sorted(glossary.items(), key=lambda x: len(x[0]), reverse=True)
-        for kor_term, trans_dict in sorted_glossary:
-            if len(kor_term) <= 2 and f" {kor_term} " not in f" {all_sources_combined} ":
-                continue
-            if kor_term in all_sources_combined:
-                target_trans = get_glossary_translation(trans_dict, target_lang)
-                if target_trans:
-                    glossary_rules.append(f"- '{kor_term}' -> '{target_trans}'")
+    glossary_rules = glossary_prompt_rules(list(items.values()), glossary, target_lang)
 
     # 2. 언어별 특화 톤앤매너 규칙
     lang_guide_text = lang_config.tone_guide(target_lang, lang_full)
@@ -572,8 +642,12 @@ def translate_batch_with_gemini(items: dict[str, str], target_lang: str, api_key
                     _note_model_used("gemini", preferred_model, model_candidate)
                     return clean_res
             except urllib.error.HTTPError as e:
-                err_body = e.read().decode("utf-8", errors="replace")
-                last_err = f"{model_candidate} ({e.code}): {err_body}"
+                err_body = _http_error_body(e)
+                last_err = _redact(f"{model_candidate} ({e.code}): {err_body}")
+                _log_llm_error("gemini", model_candidate, e)
+                if _is_permanent_llm_error(e):
+                    # 키가 모든 후보 모델에 공통이므로 다른 모델/재시도로 넘어가지 않고 즉시 중단
+                    raise RuntimeError(f"Gemini 배치 번역 실패: {last_err}")
                 if e.code in [503, 429]:
                     if model_candidate != candidates[-1]:
                         print(f"      ⚡ [{model_candidate}] 할당량(429) 도달 ➔ 대기 없이 다음 최적 모델로 0.1초 즉시 전환!", flush=True)
@@ -583,7 +657,8 @@ def translate_batch_with_gemini(items: dict[str, str], target_lang: str, api_key
                         continue
                 break
             except Exception as e:
-                last_err = str(e)
+                last_err = _redact(str(e))
+                _log_llm_error("gemini", model_candidate, e)
                 time.sleep(0.5)
                 continue
 
@@ -600,15 +675,8 @@ def review_mqm_batch(items: dict[str, dict], target_lang: str, api_key: str, glo
     _, lang_full = resolve_language_info(target_lang)
 
     # 1. 고유명사 매칭 (글자 수가 긴 복합어 우선 매칭)
-    glossary_rules = []
-    if glossary:
-        all_sources = " ".join([info.get("korean", "") or info.get("source", "") for info in items.values()])
-        sorted_glossary = sorted(glossary.items(), key=lambda x: len(x[0]), reverse=True)
-        for kor_term, trans_dict in sorted_glossary:
-            if kor_term in all_sources:
-                target_trans = get_glossary_translation(trans_dict, target_lang)
-                if target_trans:
-                    glossary_rules.append(f"- '{kor_term}' (Preferred Glossary: '{target_trans}')")
+    glossary_rules = glossary_prompt_rules(
+        [info.get("korean", "") or info.get("source", "") for info in items.values()], glossary, target_lang, review=True)
 
     # 2. 외부 마크다운 프롬프트 템플릿 로드 및 안전한 치환
     template = load_prompt_template("mqm_review_prompt.md")
@@ -693,6 +761,9 @@ def review_mqm_batch(items: dict[str, dict], target_lang: str, api_key: str, glo
                         _note_model_used("gemini", preferred_model, model_candidate)
                         return clean_mqm
             except urllib.error.HTTPError as e:
+                _log_llm_error("gemini", model_candidate, e)
+                if _is_permanent_llm_error(e):
+                    return {}
                 if e.code in (429, 503):
                     if model_candidate != candidates[-1]:
                         print(f"      ⚡ [{model_candidate}] 할당량(429) 도달 ➔ 대기 없이 다음 후보 모델로 즉시 전환!", flush=True)
@@ -701,7 +772,8 @@ def review_mqm_batch(items: dict[str, dict], target_lang: str, api_key: str, glo
                         time.sleep(2.0 * (2 ** attempt))
                         continue
                 break
-            except Exception:
+            except Exception as e:
+                _log_llm_error("gemini", model_candidate, e)
                 time.sleep(0.5)
                 continue
     return {}
@@ -734,6 +806,9 @@ Text: {text}"""
                 _note_model_used("gemini", preferred_model, model_candidate)
                 return ans.strip('"`\' \n')
         except urllib.error.HTTPError as e:
+            _log_llm_error("gemini", model_candidate, e)
+            if _is_permanent_llm_error(e):
+                return ""
             if e.code in (429, 503):
                 if model_candidate != candidates[-1]:
                     print(f"      ⚡ [{model_candidate}] 할당량(429) 도달 ➔ 대기 없이 다음 후보 모델로 즉시 전환!", flush=True)
@@ -742,7 +817,8 @@ Text: {text}"""
                     time.sleep(2.0)
                     continue
             continue
-        except Exception:
+        except Exception as e:
+            _log_llm_error("gemini", model_candidate, e)
             continue
     return ""
 
@@ -774,17 +850,7 @@ def translate_batch_with_openai(items: dict[str, str], target_lang: str, api_key
     clean_model = _clean_model_name(model, lang_config.model_setting("openai_default", "gpt-4o-mini"))
     _, lang_full = resolve_language_info(target_lang)
 
-    glossary_rules = []
-    if glossary:
-        all_sources_combined = " ".join(items.values())
-        sorted_glossary = sorted(glossary.items(), key=lambda x: len(x[0]), reverse=True)
-        for kor_term, trans_dict in sorted_glossary:
-            if len(kor_term) <= 2 and f" {kor_term} " not in f" {all_sources_combined} ":
-                continue
-            if kor_term in all_sources_combined:
-                target_trans = get_glossary_translation(trans_dict, target_lang)
-                if target_trans:
-                    glossary_rules.append(f"- '{kor_term}' -> '{target_trans}'")
+    glossary_rules = glossary_prompt_rules(list(items.values()), glossary, target_lang)
 
     lang_guide_text = lang_config.tone_guide(target_lang, lang_full)
 
@@ -846,21 +912,14 @@ def translate_batch_with_openai(items: dict[str, str], target_lang: str, api_key
                         clean_res[str(item_k)] = str(item_v).strip()
             return clean_res
     except Exception as e:
-        raise RuntimeError(f"OpenAI ({clean_model}) 배치 번역 실패: {e}")
+        raise RuntimeError(_redact(f"OpenAI ({clean_model}) 배치 번역 실패: {e}"))
 
 def review_mqm_batch_openai(items: dict[str, dict], target_lang: str, api_key: str, model: str = "", glossary: dict = None) -> dict[str, dict]:
     clean_model = _clean_model_name(model, lang_config.model_setting("openai_default", "gpt-4o-mini"))
     _, lang_full = resolve_language_info(target_lang)
 
-    glossary_rules = []
-    if glossary:
-        all_sources = " ".join([info.get("korean", "") or info.get("source", "") for info in items.values()])
-        sorted_glossary = sorted(glossary.items(), key=lambda x: len(x[0]), reverse=True)
-        for kor_term, trans_dict in sorted_glossary:
-            if kor_term in all_sources:
-                target_trans = get_glossary_translation(trans_dict, target_lang)
-                if target_trans:
-                    glossary_rules.append(f"- '{kor_term}' (Preferred Glossary: '{target_trans}')")
+    glossary_rules = glossary_prompt_rules(
+        [info.get("korean", "") or info.get("source", "") for info in items.values()], glossary, target_lang, review=True)
 
     template = load_prompt_template("mqm_review_prompt.md")
     additional_rules = load_additional_rules()
@@ -934,7 +993,8 @@ def review_mqm_batch_openai(items: dict[str, dict], target_lang: str, api_key: s
                     else:
                         clean_mqm[item_k] = item_v
             return clean_mqm
-    except Exception:
+    except Exception as e:
+        _log_llm_error("openai", clean_model, e)
         return {}
 
 def translate_single_corrective_openai(text: str, target_lang: str, api_key: str, model: str = "", feedback: str = "") -> str:
@@ -968,7 +1028,8 @@ Text: {text}"""
             res_data = json.loads(resp.read().decode("utf-8"))
             ans = res_data["choices"][0]["message"]["content"].strip()
             return ans.strip('"`\' \n')
-    except Exception:
+    except Exception as e:
+        _log_llm_error("openai", clean_model, e)
         return ""
 
 # --- Anthropic Claude 번역 & MQM ---
@@ -976,17 +1037,7 @@ def translate_batch_with_claude(items: dict[str, str], target_lang: str, api_key
     clean_model = _clean_model_name(model, lang_config.model_setting("claude_default", "claude-3-5-sonnet-20241022"))
     _, lang_full = resolve_language_info(target_lang)
 
-    glossary_rules = []
-    if glossary:
-        all_sources_combined = " ".join(items.values())
-        sorted_glossary = sorted(glossary.items(), key=lambda x: len(x[0]), reverse=True)
-        for kor_term, trans_dict in sorted_glossary:
-            if len(kor_term) <= 2 and f" {kor_term} " not in f" {all_sources_combined} ":
-                continue
-            if kor_term in all_sources_combined:
-                target_trans = get_glossary_translation(trans_dict, target_lang)
-                if target_trans:
-                    glossary_rules.append(f"- '{kor_term}' -> '{target_trans}'")
+    glossary_rules = glossary_prompt_rules(list(items.values()), glossary, target_lang)
 
     lang_guide_text = lang_config.tone_guide(target_lang, lang_full)
 
@@ -1051,21 +1102,14 @@ def translate_batch_with_claude(items: dict[str, str], target_lang: str, api_key
                         clean_res[str(item_k)] = str(item_v).strip()
             return clean_res
     except Exception as e:
-        raise RuntimeError(f"Claude ({clean_model}) 배치 번역 실패: {e}")
+        raise RuntimeError(_redact(f"Claude ({clean_model}) 배치 번역 실패: {e}"))
 
 def review_mqm_batch_claude(items: dict[str, dict], target_lang: str, api_key: str, model: str = "", glossary: dict = None) -> dict[str, dict]:
     clean_model = _clean_model_name(model, lang_config.model_setting("claude_default", "claude-3-5-sonnet-20241022"))
     _, lang_full = resolve_language_info(target_lang)
 
-    glossary_rules = []
-    if glossary:
-        all_sources = " ".join([info.get("korean", "") or info.get("source", "") for info in items.values()])
-        sorted_glossary = sorted(glossary.items(), key=lambda x: len(x[0]), reverse=True)
-        for kor_term, trans_dict in sorted_glossary:
-            if kor_term in all_sources:
-                target_trans = get_glossary_translation(trans_dict, target_lang)
-                if target_trans:
-                    glossary_rules.append(f"- '{kor_term}' (Preferred Glossary: '{target_trans}')")
+    glossary_rules = glossary_prompt_rules(
+        [info.get("korean", "") or info.get("source", "") for info in items.values()], glossary, target_lang, review=True)
 
     template = load_prompt_template("mqm_review_prompt.md")
     additional_rules = load_additional_rules()
@@ -1144,7 +1188,8 @@ def review_mqm_batch_claude(items: dict[str, dict], target_lang: str, api_key: s
                     else:
                         clean_mqm[item_k] = item_v
             return clean_mqm
-    except Exception:
+    except Exception as e:
+        _log_llm_error("claude", clean_model, e)
         return {}
 
 def translate_single_corrective_claude(text: str, target_lang: str, api_key: str, model: str = "", feedback: str = "") -> str:
@@ -1180,7 +1225,8 @@ Text: {text}"""
             content_list = res_data.get("content", [])
             ans = content_list[0].get("text", "").strip() if content_list else ""
             return ans.strip('"`\' \n')
-    except Exception:
+    except Exception as e:
+        _log_llm_error("claude", clean_model, e)
         return ""
 
 # --- 통합 디스패처 (Unified Dispatchers) ---
@@ -2318,7 +2364,10 @@ def call_gemini_raw(prompt: str, api_key: str, model: str = "", json_mode: bool 
                 _CONFIRMED_WORKING_GEMINI_MODEL = mc
                 _note_model_used("gemini", model, mc)
                 return d["candidates"][0]["content"]["parts"][0]["text"].strip()
-        except Exception:
+        except Exception as e:
+            _log_llm_error("gemini", mc, e)
+            if _is_permanent_llm_error(e):
+                break   # 키 인증 실패는 다른 모델로도 해결되지 않음
             continue
 
     return ""
@@ -2347,7 +2396,8 @@ def _llm_call_raw(prompt: str, provider: str, api_key: str, model: str = "", jso
                 cl = json.loads(resp.read().decode("utf-8")).get("content", [])
                 return cl[0].get("text", "").strip() if cl else ""
         return call_gemini_raw(prompt, api_key, model, json_mode, timeout)
-    except Exception:
+    except Exception as e:
+        _log_llm_error(provider or "gemini", model or "auto", e)
         return ""
     return ""
 
@@ -2443,10 +2493,31 @@ def glossary_terms_for(kor: str, lang_code: str, glossary: dict) -> list:
         out.append((ko, exp))
     return out
 
+_GLOSS_STEM_MIN = 5   # 이 글자 수 이상인 단어만 어간 비교 (짧은 단어는 정확히 일치해야 함)
+
+def glossary_term_present(exp: str, translation: str, lang_code: str) -> bool:
+    """번역문에 용어집 지정 번역이 적용됐는지. 기본은 부분 문자열 일치(exact).
+    languages.json 의 glossary_match=stem 언어(스페인어·독일어 등)는 성·수·격 변화를 허용하도록
+    단어 끝 2글자를 뗀 어간이 단어 시작 위치에서 일치하면 적용된 것으로 본다."""
+    t = re.sub(r"<[^>]+>", "", translation or "").lower()
+    e = (exp or "").strip().lower()
+    if not e or e in t:
+        return bool(e)
+    if lang_config.glossary_match(lang_code) != "stem":
+        return False
+    for w in re.findall(r"\w+", e):
+        if w in t:
+            continue
+        if len(w) < _GLOSS_STEM_MIN:
+            return False
+        stem = w[:max(4, len(w) - 2)]
+        if not re.search(r"(?<!\w)" + re.escape(stem), t):
+            return False
+    return True
+
 def glossary_missing(kor: str, translation: str, lang_code: str, glossary: dict) -> list:
     """번역문에 빠진 용어집 지정 번역 목록 [(한글, 지정 번역)]"""
-    t = re.sub(r"<[^>]+>", "", translation or "").lower()
-    return [(ko, exp) for ko, exp in glossary_terms_for(kor, lang_code, glossary) if exp.lower() not in t]
+    return [(ko, exp) for ko, exp in glossary_terms_for(kor, lang_code, glossary) if not glossary_term_present(exp, translation, lang_code)]
 
 def _gloss_txt(terms) -> str:
     return ", ".join(f"'{ko}'→'{exp}'" for ko, exp in terms)
@@ -2499,7 +2570,7 @@ def glossary_fix_batch(items: dict, lang_code: str, provider: str, api_key: str,
                     if not ok:
                         why = msg
                     else:
-                        miss = [(ko, exp) for ko, exp in it["terms"] if exp.lower() not in re.sub(r"<[^>]+>", "", cand).lower()]
+                        miss = [(ko, exp) for ko, exp in it["terms"] if not glossary_term_present(exp, cand, lang_code)]
                         if miss:
                             why = f"용어집 미적용: {_gloss_txt(miss)}"
                 if why:

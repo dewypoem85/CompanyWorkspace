@@ -59,6 +59,11 @@ def glossary_cols() -> dict:
     return {c: v["glossary_col"] for c, v in (load().get("languages") or {}).items() if v.get("glossary_col")}
 
 
+def glossary_match(code: str) -> str:
+    """용어집 적용 판정 방식: 'exact'(기본, 부분 문자열) 또는 'stem'(성·수·격 변화가 있는 언어의 어간 일치)"""
+    return "stem" if language(code).get("glossary_match") == "stem" else "exact"
+
+
 def contamination(code: str):
     """(정규식, 라벨) 또는 None. 미등록 언어는 default_contamination 적용"""
     c = language(code).get("contamination") or (None if code in (load().get("languages") or {}) else load().get("default_contamination"))
