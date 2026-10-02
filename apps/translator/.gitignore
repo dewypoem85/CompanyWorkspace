@@ -8,7 +8,7 @@ engine/config/config.json
 engine/data/audit_cache.json
 engine/data/schedule_state.json
 engine/output/
-engine/__pycache__/
+engine/**/__pycache__/
 
 # 예전 구조(루트)에 남아 있을 수 있는 파일 (migrate 전)
 engine/config.json

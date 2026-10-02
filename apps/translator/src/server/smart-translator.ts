@@ -156,6 +156,7 @@ let sheetsCache: { data: any; timestamp: number } | null = null;
 let glossaryCache: { data: any; timestamp: number } | null = null;
 const resultsCacheMap = new Map<string, { mtimeMs: number; data: any }>();
 const detectedLangsCache = new Map<string, { data: any; timestamp: number }>();
+const modelsCache = new Map<string, { data: any; timestamp: number }>(); // 제공자별 실제 사용 가능 모델 목록
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10분
 
 function isValidKeyForProvider(provider: string, keyStr: string): boolean {
@@ -252,6 +253,7 @@ export async function handleSaveConfig(req: Request, res: Response): Promise<voi
   try {
     const options = req.body || {};
     sheetsCache = null; // 설정 변경 시 시트 캐시 즉시 무효화
+    modelsCache.clear(); // API 키가 바뀌면 조회 가능한 모델도 달라짐
     const raw = await runPythonCommand(['--action', 'save_config', '--options', JSON.stringify(options)]);
     const data = JSON.parse(raw);
     res.json(data);
@@ -300,6 +302,29 @@ export async function handleTestKey(req: Request, res: Response): Promise<void> 
     const payload = req.body || {};
     const raw = await runPythonCommand(['--action', 'test_key', '--options', JSON.stringify(payload)]);
     const data = JSON.parse(raw);
+    if (data?.success) modelsCache.clear();
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+// 등록된 API 키로 제공자별 실제 사용 가능 모델 목록 조회 (성공 결과만 10분 캐시, ?refresh=1 로 강제 재조회)
+export async function handleGetModels(req: Request, res: Response): Promise<void> {
+  const provider = String(req.query.provider || '');
+  if (!['gemini', 'claude', 'openai'].includes(provider)) {
+    res.status(400).json({ success: false, error: '지원되지 않는 제공자입니다.' });
+    return;
+  }
+  const cached = modelsCache.get(provider);
+  if (cached && req.query.refresh !== '1' && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    res.json(cached.data);
+    return;
+  }
+  try {
+    const raw = await runPythonCommand(['--action', 'list_models', '--options', JSON.stringify({ provider })]);
+    const data = JSON.parse(raw);
+    if (data?.success) modelsCache.set(provider, { data, timestamp: Date.now() });
     res.json(data);
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });

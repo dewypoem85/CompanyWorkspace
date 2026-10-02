@@ -225,7 +225,7 @@ export function SchedulePanel({ onDirtyChange }: { onDirtyChange?: (dirty: boole
           <input type="time" className="cw-form-control" value={cfg.time} onChange={(e) => update({ time: e.target.value })} />
         </label>
 
-        <div style={fieldStyle}>
+        <div style={{ ...fieldStyle, gridColumn: '1 / -1' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <strong>실행 요일</strong>
             <button type="button" className="cw-button" style={{ padding: '2px 10px', fontSize: '0.8rem' }} onClick={() => update({ days: [0, 1, 2, 3, 4, 5, 6] })}>
@@ -235,20 +235,17 @@ export function SchedulePanel({ onDirtyChange }: { onDirtyChange?: (dirty: boole
               전체 해제
             </button>
           </div>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {/* 요일은 복수 선택이므로 언어 선택과 같은 공통 checkbox 사용 (선택 여부가 체크 표시로 구분됨).
+              7칸 한 줄 고정: 칸이 내용보다 좁아지면 겹치지 않고 이 영역만 가로 스크롤 */}
+          <div style={{ overflowX: 'auto', maxWidth: '640px' }}>
+          <div role="group" aria-label="실행 요일" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(56px, 1fr))', gap: '6px' }}>
             {DAY_LABELS.map((label, d) => (
-              <button
-                key={d}
-                type="button"
-                className="cw-button"
-                data-variant={cfg.days.includes(d) ? 'primary' : undefined}
-                aria-pressed={cfg.days.includes(d)}
-                style={{ padding: '4px 10px', fontSize: '0.85rem' }}
-                onClick={() => toggleDay(d)}
-              >
-                {label}
-              </button>
+              <label key={d} className="cw-check-control" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px 6px', cursor: 'pointer' }}>
+                <input type="checkbox" className="cw-checkbox" checked={cfg.days.includes(d)} onChange={() => toggleDay(d)} />
+                <span>{label}</span>
+              </label>
             ))}
+          </div>
           </div>
           {cfg.days.length === 0 && <small style={{ color: 'var(--cw-danger)' }}>요일을 하나 이상 선택해야 저장할 수 있습니다.</small>}
         </div>

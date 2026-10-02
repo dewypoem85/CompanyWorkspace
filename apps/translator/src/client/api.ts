@@ -101,6 +101,11 @@ export const api = {
         signal,
       }
     ),
+  getModels: (provider: string, refresh = false, signal?: AbortSignal) =>
+    request<{ success: boolean; provider?: string; models?: string[]; error?: string }>(
+      `/api/smart-translator/models?provider=${encodeURIComponent(provider)}${refresh ? '&refresh=1' : ''}`,
+      { signal }
+    ),
   detectLanguages: (payload: { target_sheet_url?: string; target_source_mode?: string; current_sheet_name?: string; refresh?: boolean; filename?: string }, signal?: AbortSignal) =>
     request<{
       success: boolean;

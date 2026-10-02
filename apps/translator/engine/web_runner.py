@@ -252,6 +252,28 @@ def action_test_key(options_json):
     except Exception as e:
         print(json.dumps({"success": False, "error": str(e)}, ensure_ascii=False))
 
+def action_list_models(options_json):
+    """등록된 API 키로 제공자의 실제 사용 가능 모델 목록을 조회합니다 (model_discovery 재사용).
+    조회 실패를 빈 목록 성공으로 숨기지 않고 success=False 로 알려 화면이 기본 목록으로 전환하게 합니다."""
+    try:
+        data = json.loads(options_json) if options_json else {}
+        provider = (data.get("provider") or "").strip()
+        if provider not in ("gemini", "claude", "openai"):
+            print(json.dumps({"success": False, "error": "지원되지 않는 제공자입니다."}, ensure_ascii=False))
+            return
+        key = (load_config().get(f"{provider}_api_key") or "").strip()
+        if not is_valid_key_for_provider(provider, key):
+            print(json.dumps({"success": False, "provider": provider, "error": f"{provider.upper()} API 키가 등록되지 않았습니다."}, ensure_ascii=False))
+            return
+        import model_discovery
+        models = model_discovery.discover(provider, key)
+        if not models:
+            print(json.dumps({"success": False, "provider": provider, "error": "모델 목록을 불러오지 못했습니다. (키 권한 또는 네트워크 확인)"}, ensure_ascii=False))
+            return
+        print(json.dumps({"success": True, "provider": provider, "models": models}, ensure_ascii=False))
+    except Exception as e:
+        print(json.dumps({"success": False, "error": str(e)}, ensure_ascii=False))
+
 def action_get_config():
     try:
         cfg = load_config()
@@ -950,7 +972,7 @@ if __name__ == "__main__":
     parser.add_argument("--action", required=True, choices=[
         "list_sheets", "get_config", "save_config", "test_key", "detect_languages",
         "get_results", "run", "apply_excel", "get_glossary", "save_glossary", "clear_cache",
-        "test_service_account"
+        "test_service_account", "list_models"
     ])
     parser.add_argument("--options", default="")
     args = parser.parse_args()
@@ -979,3 +1001,5 @@ if __name__ == "__main__":
         action_clear_cache()
     elif args.action == "test_service_account":
         action_test_service_account(args.options)
+    elif args.action == "list_models":
+        action_list_models(args.options)

@@ -7,6 +7,7 @@ import {
   handleGetConfig,
   handleSaveConfig,
   handleTestKey,
+  handleGetModels,
   handleDetectLanguages,
   handleGetGlossary,
   handleSaveGlossary,
@@ -62,6 +63,7 @@ app.get('/api/smart-translator/sheets', asyncRoute(handleGetSheets));
 app.get('/api/smart-translator/config', asyncRoute(handleGetConfig));
 app.post('/api/smart-translator/config', asyncRoute(handleSaveConfig));
 app.post('/api/smart-translator/test-key', asyncRoute(handleTestKey));
+app.get('/api/smart-translator/models', asyncRoute(handleGetModels));
 app.post('/api/smart-translator/detect-languages', asyncRoute(handleDetectLanguages));
 app.get('/api/smart-translator/glossary', asyncRoute(handleGetGlossary));
 app.post('/api/smart-translator/glossary', asyncRoute(handleSaveGlossary));

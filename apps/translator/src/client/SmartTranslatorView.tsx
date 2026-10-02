@@ -89,6 +89,18 @@ const MODEL_OPTIONS: Record<'gemini' | 'claude' | 'openai', string[]> = {
   openai: ['gpt-4o-mini (가성비 추천)', 'gpt-4o', 'gpt-4.1', 'gpt-4.1-mini'],
 };
 
+type ModelProvider = 'gemini' | 'claude' | 'openai';
+// 제공자 선택 시 기본으로 고르는 모델 (Gemini 는 자동 감지)
+const defaultModelFor = (p: ModelProvider) => MODEL_OPTIONS[p][0];
+// API 에서 조회한 모델 ID 목록에 기존 안내 문구(빠름·저비용 등)를 붙이고, 자동 감지 항목은 맨 앞에 유지
+function buildModelOptions(p: ModelProvider, remote?: string[]): string[] {
+  const base = MODEL_OPTIONS[p];
+  if (!remote || remote.length === 0) return base;
+  const labelOf = new Map(base.map((o) => [o.split(' ')[0], o]));
+  const auto = base.filter((o) => o.includes('[Auto]'));
+  return [...auto, ...remote.map((id) => labelOf.get(id) || id)];
+}
+
 const clientLangsCache = new Map<string, { count: number; languages: Array<{ code: string; name: string; label: string; raw_header: string }> }>();
 
 export function SmartTranslatorView({
@@ -139,6 +151,10 @@ export function SmartTranslatorView({
   const [availableProviders, setAvailableProviders] = useState<string[]>([]);
   const [registeredProviders, setRegisteredProviders] = useState<string[]>([]);
   const [hasAnyKey, setHasAnyKey] = useState<boolean>(true);
+  // 등록된 API 키로 조회한 제공자별 실제 모델 목록 (조회 실패 시 MODEL_OPTIONS 기본 목록 사용)
+  const [remoteModels, setRemoteModels] = useState<Partial<Record<ModelProvider, string[]>>>({});
+  const [modelList, setModelList] = useState<{ provider: string; status: 'loading' | 'ok' | 'failed'; error?: string } | null>(null);
+  const [modelListReload, setModelListReload] = useState(0);
 
   // 구글 시트 접속 서비스 계정 키 (.json) 상태
   const [serviceAccounts, setServiceAccounts] = useState<
@@ -293,9 +309,7 @@ export function SmartTranslatorView({
           if (!av.includes(provider)) {
             const firstP = av[0] as 'claude' | 'gemini' | 'openai';
             setProvider(firstP);
-            if (firstP === 'claude') setModel('claude-3-5-sonnet-20241022 (최고 품질 추천)');
-            else if (firstP === 'gemini') setModel('⚡ [Auto] 최신 최적 모델 자동 감지 (추천)');
-            else setModel('gpt-4o-mini (가성비 추천)');
+            setModel(defaultModelFor(firstP));
           }
         } else {
           setProvider('');
@@ -353,6 +367,42 @@ export function SmartTranslatorView({
       void loadData(true);
     }
   }, [refreshKey, isActive]);
+
+  // 인증된 제공자를 고르면 해당 API 키로 실제 사용 가능한 모델 목록을 조회 (새로고침 버튼은 서버 캐시 무시)
+  const modelReloadSeen = useRef(0);
+  const providerReady = !!provider && availableProviders.includes(provider);
+  useEffect(() => {
+    if (!isActive || !providerReady) return;
+    const p = provider as ModelProvider;
+    const refresh = modelListReload !== modelReloadSeen.current;
+    modelReloadSeen.current = modelListReload;
+    const controller = new AbortController();
+    setModelList({ provider: p, status: 'loading' });
+    api
+      .getModels(p, refresh, controller.signal)
+      .then((res) => {
+        if (controller.signal.aborted) return;
+        if (res.success && res.models && res.models.length > 0) {
+          setRemoteModels((prev) => ({ ...prev, [p]: res.models }));
+          setModelList({ provider: p, status: 'ok' });
+        } else {
+          setModelList({ provider: p, status: 'failed', error: res.error });
+        }
+      })
+      .catch((err: any) => {
+        if (controller.signal.aborted) return;
+        setModelList({ provider: p, status: 'failed', error: err?.message });
+      });
+    return () => controller.abort();
+  }, [provider, providerReady, isActive, modelListReload]);
+
+  // 조회 실패 시에는 이전에 성공한 목록 대신 기본 목록을 보여 준다 (오래된 목록을 최신으로 오인하지 않게)
+  const modelOptions = useMemo(() => {
+    if (!provider) return [];
+    const p = provider as ModelProvider;
+    const ok = modelList?.provider === p && modelList.status === 'ok';
+    return buildModelOptions(p, ok ? remoteModels[p] : undefined);
+  }, [provider, modelList, remoteModels]);
 
   // 작업 진행 중일 때 주기적 폴링
   useEffect(() => {
@@ -1266,9 +1316,7 @@ export function SmartTranslatorView({
                   const p = e.target.value as any;
                   if (!availableProviders.includes(p)) return;
                   setProvider(p);
-                  if (p === 'claude') setModel(MODEL_OPTIONS.claude[0]);
-                  else if (p === 'gemini') setModel('⚡ [Auto] 최신 최적 모델 자동 감지 (추천)');
-                  else if (p === 'openai') setModel('gpt-4o-mini (가성비 추천)');
+                  setModel(defaultModelFor(p));
                 }}
                 disabled={job?.running || !hasAnyKey}
               >
@@ -1317,15 +1365,42 @@ export function SmartTranslatorView({
                   disabled={job?.running}
                   title="번역·검수에 사용할 AI 모델을 선택합니다. (모델 ID는 첫 단어 기준)"
                 >
-                  {!MODEL_OPTIONS[provider as 'gemini' | 'claude' | 'openai']?.includes(model) && model && (
-                    <option value={model}>{model}</option>
+                  {!modelOptions.includes(model) && model && (
+                    <option value={model}>
+                      {modelList?.status === 'ok' ? `${model} — 현재 키로 조회되지 않음 (자동 대체됨)` : model}
+                    </option>
                   )}
-                  {(MODEL_OPTIONS[provider as 'gemini' | 'claude' | 'openai'] || []).map((m) => (
+                  {modelOptions.map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>
                   ))}
                 </select>
+              )}
+              {hasAnyKey && provider && modelList?.provider === provider && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span
+                    className="cw-state-pill"
+                    data-tone={modelList.status === 'ok' ? 'success' : modelList.status === 'failed' ? 'warning' : 'info'}
+                    title={modelList.error || undefined}
+                  >
+                    <i></i>{' '}
+                    {modelList.status === 'loading'
+                      ? '모델 목록 불러오는 중…'
+                      : modelList.status === 'ok'
+                      ? `API에서 모델 ${remoteModels[provider as ModelProvider]?.length ?? 0}개 조회됨`
+                      : '모델 목록 조회 실패 — 기본 목록 표시'}
+                  </span>
+                  <button
+                    type="button"
+                    className="cw-button"
+                    style={{ padding: '2px 10px', fontSize: '0.8rem' }}
+                    onClick={() => setModelListReload((n) => n + 1)}
+                    disabled={modelList.status === 'loading' || job?.running}
+                  >
+                    목록 새로고침
+                  </button>
+                </div>
               )}
             </label>
           </div>
