@@ -1,0 +1,204 @@
+@page
+@model LeaveManager.Pages.Admin.UsageModel
+
+
+<section class="page-title-row">
+    <div>
+        <p class="eyebrow">Admin report</p>
+        <h1>직원 연차 사용 통계</h1>
+        <p class="muted-text">직원을 선택하거나 전체 직원을 한 번에 조회해 입사일 기준 연차년도별 사용량을 확인합니다.</p>
+    </div>
+</section>
+
+<section class="panel">
+    <form method="get" class="cw-form-fields usage-filter-form">
+        <label class="cw-form-field">직원 선택
+            <select class="cw-form-control" name="EmployeeId" data-company-picker="employee" data-company-local="true" data-cw-auto-submit>
+                @if (Model.EmployeeId == 0)
+                {
+                    <option value="0" selected>전체 직원 한 번에 보기</option>
+                }
+                else
+                {
+                    <option value="0">전체 직원 한 번에 보기</option>
+                }
+                @foreach (var e in Model.Employees)
+                {
+                    var label = $"{e.Name} / {e.Email} / {Model.RoleName(e.Role)}{(e.IsActive ? "" : " / 퇴사")}";
+                    if (Model.EmployeeId == e.Id)
+                    {
+                        <option value="@e.Id" selected>@label</option>
+                    }
+                    else
+                    {
+                        <option value="@e.Id">@label</option>
+                    }
+                }
+            </select>
+        </label>
+        <div class="usage-filter-action"><button type="submit" class="cw-button">조회</button></div>
+    </form>
+</section>
+
+@if (Model.ShowAll)
+{
+    <section class="panel">
+        <div class="panel-head">
+            <div>
+                <h2>전체 직원 현재 연차년도 요약</h2>
+                <p>각 직원의 현재 연차년도 기준 사용량입니다.</p>
+            </div>
+        </div>
+        <div class="cw-table-scroll" tabindex="0" role="region" aria-label="목록 표">
+            <table class="cw-data-table usage-table" data-layout="cards" role="table">
+                <thead>
+                    <tr>
+                        <th scope="col">직원</th>
+                        <th scope="col">상태</th>
+                        <th scope="col">입사일</th>
+                        <th scope="col">현재 연차년도</th>
+                        <th scope="col">현재년도 발생</th>
+                        <th scope="col">현재년도 사용</th>
+                        <th scope="col">승인 대기</th>
+                        <th scope="col">남은 연차</th>
+                        <th scope="col">전체 사용</th>
+                        <th scope="col">신청 건수</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var report in Model.Reports.OrderBy(x => x.Employee.IsActive ? 0 : 1).ThenBy(x => x.Employee.Name))
+                {
+                    <tr>
+                        <td data-label="직원"><div class="cw-table-value"><strong><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="@report.Employee.Id">@System.Globalization.StringInfo.GetNextTextElement(report.Employee.Name)</span>@report.Employee.Name</strong><br/><small>@report.Employee.Email</small></div></td>
+                        <td data-label="상태"><div class="cw-table-value">@(report.Employee.IsActive ? "재직" : "퇴사")</div></td>
+                        <td data-label="입사일"><div class="cw-table-value">@report.Employee.HireDate.ToString("yyyy-MM-dd")</div></td>
+                        <td data-label="현재 연차년도"><div class="cw-table-value">@Model.CurrentYearLabel(report)</div></td>
+                        <td data-label="현재년도 발생"><div class="cw-table-value">@Model.FormatDays(Model.CurrentGranted(report))일</div></td>
+                        <td data-label="현재년도 사용"><div class="cw-table-value"><strong>@Model.FormatDays(Model.CurrentUsed(report))일</strong></div></td>
+                        <td data-label="승인 대기"><div class="cw-table-value">@Model.FormatDays(Model.CurrentPending(report))일</div></td>
+                        <td data-label="남은 연차"><div class="cw-table-value"><strong>@Model.FormatDays(Model.CurrentAvailable(report))일</strong></div></td>
+                        <td data-label="전체 사용"><div class="cw-table-value">@Model.FormatDays(report.TotalUsed)일</div></td>
+                        <td data-label="신청 건수"><div class="cw-table-value">@report.TotalRequestCount 건</div></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    @foreach (var report in Model.Reports.OrderBy(x => x.Employee.IsActive ? 0 : 1).ThenBy(x => x.Employee.Name))
+    {
+        <section class="panel usage-person-panel">
+            <div class="panel-head">
+                <div>
+                    <h2><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="@report.Employee.Id">@System.Globalization.StringInfo.GetNextTextElement(report.Employee.Name)</span>@report.Employee.Name 님의 연차년도별 사용량</h2>
+                    <p>@report.Employee.HireDate.ToString("yyyy-MM-dd") 입사 기준입니다.</p>
+                </div>
+            </div>
+            <div class="cw-table-scroll" tabindex="0" role="region" aria-label="목록 표">
+                <table class="cw-data-table usage-table" data-layout="cards" role="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">연차년도</th>
+                            <th scope="col">기간</th>
+                            <th scope="col">발생</th>
+                            <th scope="col">사용</th>
+                            <th scope="col">승인 대기</th>
+                            <th scope="col">반려/취소</th>
+                            <th scope="col">정산</th>
+                            <th scope="col">신청 건수</th>
+                            <th scope="col">비고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var row in report.Rows.OrderByDescending(x => x.YearIndex))
+                    {
+                        <tr aria-current="@(row.IsCurrent ? "true" : null)">
+                            <td data-label="연차년도"><div class="cw-table-value"><strong>@row.Label</strong></div></td>
+                            <td data-label="기간"><div class="cw-table-value">@row.PeriodStart.ToString("yyyy-MM-dd") ~ @row.PeriodEnd.ToString("yyyy-MM-dd")</div></td>
+                            <td data-label="발생"><div class="cw-table-value">@Model.FormatDays(row.GrantedDays)일</div></td>
+                            <td data-label="사용"><div class="cw-table-value"><strong>@Model.FormatDays(row.UsedDays)일</strong></div></td>
+                            <td data-label="승인 대기"><div class="cw-table-value">@Model.FormatDays(row.PendingDays)일</div></td>
+                            <td data-label="반려/취소"><div class="cw-table-value">@Model.FormatDays(row.RejectedOrCancelledDays)일</div></td>
+                            <td data-label="정산"><div class="cw-table-value">@Model.FormatDays(row.SettledDays)일</div></td>
+                            <td data-label="신청 건수"><div class="cw-table-value">@row.RequestCount 건</div></td>
+                            <td data-label="비고"><div class="cw-table-value">@(row.IsCurrent ? "현재 연차년도" : "")</div></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+}
+else if (Model.Report is not null)
+{
+    <div class="metric-grid compact-metrics">
+        <article class="metric-card">
+            <span>총 사용</span>
+            <strong>@Model.FormatDays(Model.Report.TotalUsed)</strong>
+            <small>일</small>
+        </article>
+        <article class="metric-card">
+            <span>승인 대기</span>
+            <strong>@Model.FormatDays(Model.Report.TotalPending)</strong>
+            <small>일</small>
+        </article>
+        <article class="metric-card">
+            <span>남은 연차</span>
+            <strong>@Model.FormatDays(Model.Report.CurrentBalance.Available)</strong>
+            <small>일</small>
+        </article>
+        <article class="metric-card">
+            <span>신청 건수</span>
+            <strong>@Model.Report.TotalRequestCount</strong>
+            <small>건</small>
+        </article>
+    </div>
+
+    <section class="panel">
+        <div class="panel-head">
+            <div>
+                <h2><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="@Model.Report.Employee.Id">@System.Globalization.StringInfo.GetNextTextElement(Model.Report.Employee.Name)</span>@Model.Report.Employee.Name 님의 연차년도별 사용량</h2>
+                <p>@Model.Report.Employee.HireDate.ToString("yyyy-MM-dd") 입사 기준입니다. 승인 완료와 취소 승인 대기 상태는 사용량에 포함합니다. 남은 연차는 현재 연차년도 기준으로 지급 - 사용 - 승인대기 계산식과 동일하게 계산합니다.</p>
+            </div>
+        </div>
+        <div class="cw-table-scroll" tabindex="0" role="region" aria-label="목록 표">
+            <table class="cw-data-table usage-table" data-layout="cards" role="table">
+                <thead>
+                    <tr>
+                        <th scope="col">연차년도</th>
+                        <th scope="col">기간</th>
+                        <th scope="col">발생</th>
+                        <th scope="col">사용</th>
+                        <th scope="col">승인 대기</th>
+                        <th scope="col">반려/취소</th>
+                        <th scope="col">정산</th>
+                        <th scope="col">신청 건수</th>
+                        <th scope="col">비고</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in Model.Report.Rows.OrderByDescending(x => x.YearIndex))
+                {
+                    <tr aria-current="@(row.IsCurrent ? "true" : null)">
+                        <td data-label="연차년도"><div class="cw-table-value"><strong>@row.Label</strong></div></td>
+                        <td data-label="기간"><div class="cw-table-value">@row.PeriodStart.ToString("yyyy-MM-dd") ~ @row.PeriodEnd.ToString("yyyy-MM-dd")</div></td>
+                        <td data-label="발생"><div class="cw-table-value">@Model.FormatDays(row.GrantedDays)일</div></td>
+                        <td data-label="사용"><div class="cw-table-value"><strong>@Model.FormatDays(row.UsedDays)일</strong></div></td>
+                        <td data-label="승인 대기"><div class="cw-table-value">@Model.FormatDays(row.PendingDays)일</div></td>
+                        <td data-label="반려/취소"><div class="cw-table-value">@Model.FormatDays(row.RejectedOrCancelledDays)일</div></td>
+                        <td data-label="정산"><div class="cw-table-value">@Model.FormatDays(row.SettledDays)일</div></td>
+                        <td data-label="신청 건수"><div class="cw-table-value">@row.RequestCount 건</div></td>
+                        <td data-label="비고"><div class="cw-table-value">@(row.IsCurrent ? "현재 연차년도" : "")</div></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+else
+{
+    <section class="panel"><p class="muted-text">조회할 직원이 없습니다.</p></section>
+}

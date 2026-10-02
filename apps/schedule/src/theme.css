@@ -1,0 +1,25 @@
+/* Structure stays local; every color resolves through the shared workspace palette. */
+html { color:var(--cw-text); background:var(--cw-canvas); }
+body { background:var(--cw-canvas); color:var(--cw-text); }
+:is(.toolbar,.filters,.week-scroll,.person-label,.detail-panel,.login,.mobile-day) { background:var(--cw-surface); color:var(--cw-text); border-color:var(--cw-line); }
+:is(button,input,select,textarea) { background:var(--cw-raised); color:var(--cw-text); border-color:var(--cw-line); }
+button:where(:not(.cw-button)):hover { background:var(--cw-hover); border-color:var(--cw-accent); }
+button:disabled { opacity:.45; cursor:not-allowed; }
+button.primary { background:var(--cw-accent); color:var(--cw-on-accent); border-color:var(--cw-accent); }
+button.primary:hover { background:var(--cw-accent-hover); }
+.segments { background:var(--cw-surface); border:1px solid var(--cw-line); }
+.segments button { background:transparent; color:var(--cw-muted); }
+:is(.segments button.active,button.selected,button[aria-pressed="true"],.mention) { background:var(--cw-active); color:var(--cw-active-text); border-color:var(--cw-accent); box-shadow:none; }
+:is(.corner,.day-header,.milestone-cell,.milestone-label,.kanban-column,.detail-properties,.history-list pre) { background:var(--cw-raised); border-color:var(--cw-line); }
+:is(.day-cell.today,.day-header.today,.timeline-background.today) { background:var(--cw-active); }
+.comment:target { background:var(--cw-active); box-shadow:none; }
+:is(.field,.field input,.field select) { color:var(--cw-text); }
+:is(.timeline-row,.timeline-background,.editor-tools,.comment,.mobile-person,.discussion-heading) { border-color:var(--cw-line); }
+.absence { background:repeating-linear-gradient(135deg,var(--cw-violet-bg),var(--cw-violet-bg) 4px,var(--cw-raised) 4px,var(--cw-raised) 8px); color:var(--cw-violet); border-color:var(--cw-violet-line); }
+.unscheduled-list .kanban-person { background:var(--cw-surface); }
+.text-button { background:transparent; color:var(--cw-muted); }
+@media(max-width:700px) {
+  html body .schedule-workspace .mobile-week .mobile-day { background:var(--cw-surface); color:var(--cw-text); border-color:var(--cw-line); }
+  html body .schedule-workspace .mobile-week .mobile-person { border-color:var(--cw-line); }
+  html body .schedule-workspace .mobile-week .mobile-person-heading small { color:var(--cw-muted); }
+}

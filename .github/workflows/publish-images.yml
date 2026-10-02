@@ -1,0 +1,103 @@
+name: Publish Verified Images
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+  packages: write
+concurrency:
+  group: publish-verified-images
+  cancel-in-progress: false
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    outputs:
+      commit: ${{ steps.verification.outputs.commit }}
+      run_id: ${{ steps.verification.outputs.run_id }}
+      attempt: ${{ steps.verification.outputs.attempt }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - id: verification
+        run: node tooling/publication-source.mjs resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: workspace-verification-${{ steps.verification.outputs.run_id }}-${{ steps.verification.outputs.attempt }}
+          path: artifacts/source-verification
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.verification.outputs.run_id }}
+      - run: node tooling/publication-source.mjs verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: publication-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/publication/source.json
+          if-no-files-found: error
+  publish:
+    needs: source
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [portal, leave, schedule, cs, statistics, sheet, iap]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.source.outputs.commit }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v8
+        with:
+          name: publication-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/publication
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: docker build -t ghcr.io/company-org/company-workspace-${{ matrix.app }}:${{ needs.source.outputs.commit }} apps/${{ matrix.app }}
+      - run: node tooling/container-smoke.mjs --service ${{ matrix.app }} --image ghcr.io/company-org/company-workspace-${{ matrix.app }}:${{ needs.source.outputs.commit }}
+      - run: docker push ghcr.io/company-org/company-workspace-${{ matrix.app }}:${{ needs.source.outputs.commit }}
+      - id: publication
+        run: node tooling/image-publication-record.mjs --service ${{ matrix.app }} --image ghcr.io/company-org/company-workspace-${{ matrix.app }}:${{ needs.source.outputs.commit }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: image-publication-${{ matrix.app }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/publication-images/${{ matrix.app }}.json
+          if-no-files-found: error
+  publication:
+    if: always()
+    needs: [source, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.source.outputs.commit }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v8
+        with:
+          name: publication-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/publication
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: image-publication-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/publication-images
+          merge-multiple: true
+      - run: node tooling/image-publication-set.mjs
+        env:
+          SOURCE_RESULT: ${{ needs.source.result }}
+          PUBLISH_RESULT: ${{ needs.publish.result }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: workspace-publication-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/publication/*.json
+          if-no-files-found: error

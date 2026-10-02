@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Android 12+ masks the outer third of the 288dp splash icon. -->
+    <item android:width="288dp" android:height="288dp" android:gravity="center">
+        <color android:color="@android:color/transparent" />
+    </item>
+    <item android:width="128dp" android:height="128dp" android:gravity="center">
+        <bitmap android:src="@drawable/company_logo" android:gravity="fill" />
+    </item>
+</layer-list>

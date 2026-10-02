@@ -1,0 +1,13 @@
+@model LeaveManager.Pages.Admin.ApprovalActionModel
+<form method="post" asp-page="/Admin/Index" asp-page-handler="@Model.Operation" asp-antiforgery="true" data-approval-form data-operation="@Model.Operation" data-request-label="@(Model.Request.Employee.Name + " · " + string.Join(", ", Model.Request.Dates.OrderBy(x => x.Date).Select(x => x.Date.ToString("yyyy-MM-dd"))))">
+    <input type="hidden" name="id" value="@Model.Request.Id" />
+    <input type="hidden" name="expectedEmployeeId" value="@Model.Actor.Id" />
+    <input type="hidden" name="expectedSnapshot" value="@LeaveManager.Pages.Admin.IndexModel.Snapshot(Model.Request)" />
+    @if (Model.Operation == "ForceDelete") {
+        <input class="cw-form-control" name="reason" placeholder="강제 삭제 사유" aria-label="강제 삭제 사유" required />
+        <button class="cw-button" data-size="compact" data-variant="danger" disabled="@Model.Locked">강제 삭제</button>
+    } else {
+        <button class="cw-button" data-size="compact" data-variant="primary" name="approve" value="true" disabled="@Model.Locked">@(Model.Operation == "Decide" ? "승인" : "취소 승인")</button>
+        <button class="cw-button" data-size="compact" name="approve" value="false" disabled="@Model.Locked">@(Model.Operation == "Decide" ? "반려" : "취소 반려")</button>
+    }
+</form>

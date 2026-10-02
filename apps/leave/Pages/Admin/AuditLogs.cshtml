@@ -1,0 +1,148 @@
+@page
+@model LeaveManager.Pages.Admin.AuditLogsModel
+
+
+<link rel="stylesheet" href="~/css/audit-logs.css" asp-append-version="true" />
+<noscript><style>#auditLogsArea .audit-detail-row[hidden]{display:table-row!important}#auditLogsArea [data-cw-disclosure]{display:none}</style></noscript>
+
+<div class="page-title-row">
+    <div>
+        <p class="eyebrow">Audit</p>
+        <h1>관리자 변경 감사 로그</h1>
+    </div>
+</div>
+
+<div id="auditLogsState" hidden></div>
+<section id="auditLogsArea" data-audit-owner="@User.FindFirst("EmployeeId")?.Value" data-audit-action="@(Model.ActionFilter ?? "")" data-audit-actor="@(Model.ActorFilter?.ToString() ?? "")" data-audit-target="@(Model.TargetFilter ?? "")" data-audit-limit="@Model.AuditLimit">
+    <section class="panel">
+        <form method="get" class="cw-form-fields audit-search-form" id="auditLogsFilterForm">
+            <input type="hidden" name="AuditPage" value="1" />
+            <input type="hidden" name="AuditLimit" value="@Model.AuditLimit" />
+            <label class="cw-form-field">
+                <span>작업자</span>
+                <select class="cw-form-control" name="actorFilter" data-company-picker="employee" data-company-local="true">
+                    <option value="">전체 작업자</option>
+                    @foreach (var actor in Model.ActorOptions)
+                    {
+                        if (Model.ActorFilter == actor.Id)
+                        {
+                            <option value="@actor.Id" selected>@actor.Name (@actor.Email)</option>
+                        }
+                        else
+                        {
+                            <option value="@actor.Id">@actor.Name (@actor.Email)</option>
+                        }
+                    }
+                </select>
+            </label>
+            <label class="cw-form-field">
+                <span>작업</span>
+                <select class="cw-form-control" name="actionFilter">
+                    <option value="">전체 작업</option>
+                    @foreach (var action in Model.ActionOptions)
+                    {
+                        if (Model.ActionFilter == action)
+                        {
+                            <option value="@action" selected>@Model.ActionLabel(action)</option>
+                        }
+                        else
+                        {
+                            <option value="@action">@Model.ActionLabel(action)</option>
+                        }
+                    }
+                </select>
+            </label>
+            <label class="cw-form-field">
+                <span>대상/ID</span>
+                <input class="cw-form-control" name="targetFilter" value="@Model.TargetFilter" placeholder="대상 또는 ID" />
+            </label>
+            <button class="cw-button" data-variant="primary" type="submit">필터 적용</button>
+            <a class="btn secondary" asp-page="/Admin/AuditLogs">초기화</a>
+        </form>
+    </section>
+
+    <section class="panel">
+        <div class="panel-head list-panel-head">
+            <div>
+                <h2>감사 로그 내역</h2>
+                <p class="list-summary">총 @(Model.AuditTotalCount)건 중 @(Model.AuditTotalCount == 0 ? 0 : ((Model.AuditPage - 1) * Model.AuditLimit) + 1)~@Math.Min(Model.AuditPage * Model.AuditLimit, Model.AuditTotalCount)건 표시</p>
+            </div>
+            <form method="get" class="compact-filter-form" id="auditLogsListForm">
+                <input type="hidden" name="actionFilter" value="@Model.ActionFilter" />
+                <input type="hidden" name="actorFilter" value="@Model.ActorFilter" />
+                <input type="hidden" name="targetFilter" value="@Model.TargetFilter" />
+                <input type="hidden" name="AuditPage" value="@Model.AuditPage" />
+                <label class="cw-form-field">표시 개수
+                    <select class="cw-form-control" name="AuditLimit">
+                        @if (Model.AuditLimit == 10) { <option value="10" selected>10개</option> } else { <option value="10">10개</option> }
+                        @if (Model.AuditLimit == 20) { <option value="20" selected>20개</option> } else { <option value="20">20개</option> }
+                        @if (Model.AuditLimit == 50) { <option value="50" selected>50개</option> } else { <option value="50">50개</option> }
+                        @if (Model.AuditLimit == 100) { <option value="100" selected>100개</option> } else { <option value="100">100개</option> }
+                    </select>
+                </label>
+                <noscript><button class="cw-button" data-size="compact" type="submit">적용</button></noscript>
+            </form>
+        </div>
+        <div class="table-wrap audit-table-wrap cw-table-scroll" tabindex="0" role="region" aria-label="감사 로그 표">
+            <table class="responsive-table data-table audit-log-table cw-data-table">
+                <thead>
+                    <tr><th>시각</th><th>작업자</th><th>작업</th><th>대상</th><th>IP</th><th>상세</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var x in Model.Items)
+                {
+                    var detailId = $"audit-detail-{x.Id}";
+                    <tr class="audit-summary-row" data-audit-row="@x.Id">
+                        <td>@Model.Kst(x.CreatedAtUtc)</td>
+                        <td><span class="audit-actor">@if (x.ActorEmployeeId.HasValue) { <span class="cw-entity-avatar" data-company-local-employee="@x.ActorEmployeeId">@(x.ActorEmployee?.Name.FirstOrDefault())</span> }<span>@(x.ActorEmployee?.Name ?? "시스템")</span></span></td>
+                        <td><span class="audit-action-pill cw-state-pill" data-tone="info">@Model.ActionLabel(x.Action)</span></td>
+                        <td>@Model.TargetLabel(x)</td>
+                        <td>@(x.IpAddress ?? "-")</td>
+                        <td>
+                            <button type="button" class="cw-button" data-size="compact" data-variant="quiet" data-cw-disclosure="@detailId" data-cw-open-label="닫기" data-cw-closed-label="보기" aria-expanded="false" aria-controls="@detailId">보기</button>
+                        </td>
+                    </tr>
+                    <tr id="@detailId" class="audit-detail-row" data-cw-disclosure-panel="@detailId" hidden>
+                        <td colspan="6">
+                            <div class="audit-detail-panel cw-table-detail">
+                                @if (!string.IsNullOrWhiteSpace(x.Reason)) { <section><h4>사유</h4><pre>@x.Reason</pre></section> }
+                                @if (!string.IsNullOrWhiteSpace(x.DetailJson)) { <section><h4>상세</h4><pre>@x.DetailJson</pre></section> }
+                                @if (!string.IsNullOrWhiteSpace(x.BeforeJson)) { <section><h4>변경 전</h4><pre>@x.BeforeJson</pre></section> }
+                                @if (!string.IsNullOrWhiteSpace(x.AfterJson)) { <section><h4>변경 후</h4><pre>@x.AfterJson</pre></section> }
+                                @if (!string.IsNullOrWhiteSpace(x.UserAgent)) { <section><h4>User-Agent</h4><pre>@x.UserAgent</pre></section> }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="6"><div data-workspace-state="empty" data-state-title="표시할 감사 로그가 없습니다." data-state-message="검색 조건을 바꿔 다시 확인해 주세요.">표시할 감사 로그가 없습니다.</div></td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        @if (Model.AuditTotalPages > 1)
+        {
+            <nav class="pager" aria-label="감사 로그 페이지">
+                @{ var previousPage = Math.Max(1, Model.AuditPage - 1); var nextPage = Math.Min(Model.AuditTotalPages, Model.AuditPage + 1); }
+                <a class="btn btn-secondary small @(Model.AuditPage <= 1 ? "is-disabled" : "")" asp-page="AuditLogs" asp-route-actionFilter="@Model.ActionFilter" asp-route-actorFilter="@Model.ActorFilter" asp-route-targetFilter="@Model.TargetFilter" asp-route-AuditLimit="@Model.AuditLimit" asp-route-AuditPage="@previousPage">이전</a>
+                <span class="pager-status">@Model.AuditPage / @Model.AuditTotalPages</span>
+                <a class="btn btn-secondary small @(Model.AuditPage >= Model.AuditTotalPages ? "is-disabled" : "")" asp-page="AuditLogs" asp-route-actionFilter="@Model.ActionFilter" asp-route-actorFilter="@Model.ActorFilter" asp-route-targetFilter="@Model.TargetFilter" asp-route-AuditLimit="@Model.AuditLimit" asp-route-AuditPage="@nextPage">다음</a>
+                <form method="get" class="pager-jump-form" id="auditLogsPageJumpForm">
+                    <input type="hidden" name="actionFilter" value="@Model.ActionFilter" />
+                    <input type="hidden" name="actorFilter" value="@Model.ActorFilter" />
+                    <input type="hidden" name="targetFilter" value="@Model.TargetFilter" />
+                    <input type="hidden" name="AuditLimit" value="@Model.AuditLimit" />
+                    <label class="cw-form-field pager-jump-label">페이지
+                        <input class="cw-form-control" type="number" name="AuditPage" min="1" max="@Model.AuditTotalPages" value="@Model.AuditPage" />
+                    </label>
+                    <button class="cw-button" data-size="compact" type="submit">이동</button>
+                </form>
+            </nav>
+        }
+    </section>
+</section>
+
+@section Scripts {
+<script src="~/js/audit-logs.js" asp-append-version="true"></script>
+}

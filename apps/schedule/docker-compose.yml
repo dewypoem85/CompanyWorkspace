@@ -1,0 +1,33 @@
+services:
+  schedule:
+    build: .
+    container_name: company-schedule
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5181:8080"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - schedule-data:/app/data
+    networks:
+      - company-services
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      DataPath: /app/data
+      Portal__PublicUrl: ${COMPANY_PORTAL_URL:-https://company.example.com}
+      Portal__InternalUrl: http://company-portal:8080
+      Leave__InternalUrl: http://leave-manager:8080
+      Leave__PublicUrl: ${LEAVE_PUBLIC_URL:-https://leave.example.com}
+      Sso__Issuer: ${COMPANY_SSO_ISSUER:-company-portal}
+      Sso__SharedSecret: ${COMPANY_SSO_SHARED_SECRET:?Portal과 동일한 공유키가 필요합니다}
+      TrustProxy: "true"
+      AllowedHosts: "schedule.example.com;localhost;127.0.0.1;company-schedule"
+volumes:
+  schedule-data:
+    name: company-schedule-data
+networks:
+  company-services:
+    external: true
+    name: company-services

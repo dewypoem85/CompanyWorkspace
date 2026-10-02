@@ -1,0 +1,78 @@
+@page
+@model LeaveManager.Pages.Admin.NotificationSettingsModel
+
+
+<div class="page-title-row">
+    <div>
+        <p class="eyebrow">Notification</p>
+        <h1>디스코드 채널 알림</h1>
+        <p class="muted">새 연차 신청이 들어오면 등록된 디스코드 웹훅 채널로 알림을 보냅니다. 이 설정은 개인 DM 알림과 별개입니다.</p>
+    </div>
+</div>
+
+<section class="panel" data-webhook-screen data-locked="@Model.Locked.ToString().ToLowerInvariant()">
+    <script type="application/json" data-webhook-snapshot>@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Snapshot()))</script>
+    <div data-webhook-state hidden></div>
+    <p data-webhook-recheck hidden="@(!Model.Locked)"><a href="/Admin/NotificationSettings" target="_blank" rel="noopener">새 탭에서 현재 설정 확인</a></p>
+    <fieldset class="webhook-fields" data-webhook-fields disabled="@Model.Locked">
+    @if (!string.IsNullOrWhiteSpace(Model.Message))
+    {
+        <div class="success">@Model.Message</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.Error))
+    {
+        <div class="error">@Model.Error</div>
+    }
+
+    <div class="summary-grid">
+        <div class="summary-card">
+            <span>웹훅 상태</span>
+            <strong data-webhook-count>@(Model.Configured ? $"{Model.WebhookCount}개 설정됨" : "미설정")</strong>
+            <small data-webhook-description>@(Model.Configured ? "등록된 웹훅으로 채널 알림을 발송합니다." : "아래에서 Discord 웹훅 URL을 추가하세요.")</small>
+        </div>
+    </div>
+
+    <h2>웹훅 추가</h2>
+    <p class="muted">Discord 채널 설정 → 연동 → 웹후크에서 URL을 복사한 뒤, 용도를 구분할 메모와 함께 등록하세요.</p>
+    <form method="post" asp-antiforgery="true" asp-page-handler="Add" class="cw-form-fields" data-webhook-action="Add">
+        <label class="cw-form-field">웹훅 URL
+            <input class="cw-form-control" asp-for="WebhookUrl" placeholder="https://discord.com/api/webhooks/..." required />
+        </label>
+        <label class="cw-form-field">메모
+            <input class="cw-form-control" asp-for="Memo" maxlength="200" placeholder="예: 관리자 채널, 연차 알림 채널" />
+        </label>
+        <div class="cw-form-wide"><button class="cw-button" data-variant="primary" type="submit">추가</button></div>
+    </form>
+
+    <div class="panel-head list-panel-head webhook-list-head">
+        <div>
+            <h2>등록된 웹훅</h2>
+            <p>URL은 보안을 위해 일부만 표시합니다.</p>
+        </div>
+        <form method="post" asp-antiforgery="true" asp-page-handler="Test" class="webhook-test-form" data-webhook-action="Test">
+            <button class="cw-button" type="submit" disabled="@(!Model.Configured)">전체 테스트 발송</button>
+        </form>
+    </div>
+
+    <div class="cw-table-scroll" tabindex="0" role="region" aria-label="등록된 웹훅 목록">
+        <table class="cw-data-table webhook-table">
+            <thead>
+                <tr><th>메모</th><th>웹훅 URL</th><th>등록일</th><th>관리</th></tr>
+            </thead>
+            <tbody data-webhook-rows>
+            @foreach (var webhook in Model.Webhooks)
+            {
+                <partial name="_WebhookRow" model="webhook" />
+            }
+            @if (Model.Webhooks.Count == 0)
+            {
+                <tr data-webhook-empty><td colspan="4" class="muted-text">등록된 웹훅이 없습니다.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    </fieldset>
+    <template data-webhook-row-template><partial name="_WebhookRow" model="@(new LeaveManager.Models.DiscordWebhook())" /></template>
+    <template data-webhook-empty-template><tr data-webhook-empty><td colspan="4" class="muted-text">등록된 웹훅이 없습니다.</td></tr></template>
+</section>
+@section Scripts { <script type="module" src="~/js/webhook-settings.js" asp-append-version="true"></script> }

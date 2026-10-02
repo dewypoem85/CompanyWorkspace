@@ -1,0 +1,7 @@
+services:
+  company-portal:
+    volumes:
+      - type: bind
+        source: ${FIREBASE_CREDENTIAL_HOST_PATH}
+        target: /run/secrets/company-workspace-firebase-admin.json
+        read_only: true

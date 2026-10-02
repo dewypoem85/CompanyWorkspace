@@ -1,0 +1,11 @@
+@model LeaveManager.Models.Holiday
+<tr data-holiday-row="@Model.Id">
+    <td data-holiday-date>@Model.Date.ToString("yyyy-MM-dd")</td>
+    <td data-holiday-name>@Model.Name</td>
+    <td>
+        <form method="post" asp-antiforgery="true" asp-page="/Admin/Holidays" asp-page-handler="Delete" data-holiday-action="Delete">
+            <input type="hidden" name="id" value="@Model.Id" />
+            <button class="cw-button" data-variant="danger" data-size="compact" type="submit">삭제</button>
+        </form>
+    </td>
+</tr>

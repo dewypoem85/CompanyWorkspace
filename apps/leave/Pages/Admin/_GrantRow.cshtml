@@ -1,0 +1,27 @@
+@model LeaveManager.Pages.Admin.GrantRowView
+@using LeaveManager.Pages.Admin
+@{
+    var g = Model.Row.Grant;
+    var canDelete = Model.CanDelete && Model.Row.Allocated == 0 && Model.Row.Settled == 0;
+}
+<tr data-grant-row="@g.Id">
+    <td data-grant-cell="type">@AdjustmentsModel.GrantTypeName(g.GrantType)</td>
+    <td data-grant-cell="grantedDate">@g.GrantedDate.ToString("yyyy-MM-dd")</td>
+    <td data-grant-cell="expiresDate">@g.ExpiresDate.ToString("yyyy-MM-dd")</td>
+    <td data-grant-cell="days">@g.GrantedDays</td>
+    <td data-grant-cell="allocated">@Model.Row.Allocated</td>
+    <td data-grant-cell="settled">@Model.Row.Settled</td>
+    <td data-grant-cell="remaining">@Model.Row.Remaining</td>
+    <td><pre data-grant-cell="note">@g.Note</pre></td>
+    <td class="grant-row-actions">
+        <span data-grant-unavailable hidden="@canDelete">삭제 불가</span>
+        <form method="post" asp-page="/Admin/Adjustments" asp-antiforgery="true" asp-page-handler="DeleteGrant" data-grant-form="DeleteGrant" data-employee="@g.EmployeeId" hidden="@(!canDelete)">
+            <div data-grant-state hidden></div>
+            <fieldset class="cw-form-fields" disabled="@(!canDelete)">
+                <input type="hidden" name="grantId" value="@g.Id" />
+                <label class="cw-form-field cw-form-wide">삭제 사유<input class="cw-form-control" name="DeleteGrantReason" placeholder="삭제 사유" required="@Model.ReasonRequired" /></label>
+                <div class="cw-form-wide grant-actions"><button class="cw-button" data-variant="danger" type="submit">삭제</button><span data-grant-spent hidden>처리된 발생분입니다. 최신 내역을 확인하세요.</span></div>
+            </fieldset>
+        </form>
+    </td>
+</tr>

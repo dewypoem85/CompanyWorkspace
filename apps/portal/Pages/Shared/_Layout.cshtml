@@ -1,0 +1,35 @@
+@using CompanyPortal.Workspace
+@{
+    var workspacePage = WorkspacePages.Resolve(ViewContext.RouteData.Values["page"] as string, Context.Request.Query);
+}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(workspacePage?.Title ?? ViewData["Title"])</title>
+    <link rel="icon" href="~/images/company-logo.png" type="image/png" asp-append-version="true" />
+    <link rel="manifest" href="~/manifest.webmanifest" />
+    <meta name="theme-color" content="#101114" />
+    <script src="~/theme.js" asp-append-version="true"></script>
+    <script src="~/js/company-workspace.js" asp-append-version="true"></script>
+<link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/company-workspace.css" asp-append-version="true" />
+</head>
+<body class="@(User.Identity?.IsAuthenticated == true ? "is-authenticated" : "is-guest")">
+<div data-company-workspace data-company-service="home"></div>
+<a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
+@if (User.Identity?.IsAuthenticated == true)
+{
+<aside class="cw-sidebar" data-workspace-navigation="home"></aside>
+}
+<main id="main-content" class="page-shell cw-main" data-workspace-view="@workspacePage?.Id" data-workspace-identity="@(User.FindFirst("CompanyUserId")?.Value)" data-workspace-role="@(User.IsInRole("Master") ? "master" : User.IsInRole("Admin") ? "admin" : "employee")">
+    @RenderBody()
+</main>
+
+<script src="~/js/home-navigation.js" asp-append-version="true"></script>
+<script src="~/js/organization.js" asp-append-version="true"></script>
+<div data-workspace-page-scripts hidden>@await RenderSectionAsync("Scripts", required: false)</div>
+<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/service-worker.js',{scope:'/'}).catch(()=>{});</script>
+</body>
+</html>

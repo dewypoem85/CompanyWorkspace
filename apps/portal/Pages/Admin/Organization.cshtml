@@ -1,0 +1,62 @@
+@page
+@model CompanyPortal.Pages.Admin.OrganizationModel
+@{
+    var projects = Model.Tab == "projects";
+    var title = projects ? "프로젝트" : "부서";
+    ViewData["OrganizationTab"] = Model.Tab;
+}
+<section class="admin-hero"><div><span class="eyebrow">People & organization</span><h1>@title 관리</h1><p>직원의 소속과 참여 정보를 한곳에서 관리합니다.</p></div><a class="button button-secondary" href="https://schedule.example.com">팀 일정 ↗</a></section>
+<partial name="_OrganizationTabs" />
+@if (Model.Error is not null) { <div data-workspace-state="error" data-state-title="조직 정보를 확인해 주세요." data-state-message="@Model.Error">@Model.Error</div> }
+@if (Model.IconError is not null) { <div data-workspace-state="error" data-state-title="프로젝트 아이콘을 확인해 주세요." data-state-message="@Model.IconError">@Model.IconError</div> }
+<div class="organization-layout">
+<section class="panel"><h2>등록된 @title</h2><div class="organization-list">
+@if (projects) {
+    foreach (var p in Model.Projects) { <a href="/Admin/Organization?tab=projects&id=@p.Id"><span class="cw-entity-avatar" data-company-project="@p.Id">P</span><span class="organization-color" style="background:@p.Color"></span><b>@p.Name @(p.IsPrivate ? "· 비공개" : "")</b><small>@Model.Memberships.Count(x => x.ProjectId == p.Id && Model.Users.Any(u => u.Id == x.EmployeeId && !u.IsMaster && !u.IsSharedAccount))명 @(p.Archived ? "· 보관됨" : "")</small></a> }
+} else {
+    foreach (var d in Model.Departments) { <a href="/Admin/Organization?tab=departments&id=@d.Id"><b>@d.Name @(d.HandlesScheduleFeedback ? "· 제보 처리" : "")</b><small>@Model.Users.Count(x => x.DepartmentId == d.Id && !x.IsMaster && !x.IsSharedAccount)명 @(d.Archived ? "· 사용 중지" : "")</small><span>책임자: @string.Join(", ", Model.Users.Where(u => Model.Leads.Any(l => l.DepartmentId == d.Id && l.EmployeeId == u.Id)).Select(u => u.Name))</span></a> }
+}
+</div><a class="button button-secondary" href="/Admin/Organization?tab=@Model.Tab">새 @title 만들기</a></section>
+<section class="panel"><form method="post" class="organization-form" data-organization-form data-write-locked="@(Model.WriteLocked ? "true" : "false")">
+<input type="hidden" asp-for="ExpectedUserId" />
+<input type="hidden" asp-for="Tab" /><input type="hidden" asp-for="Form.Id" /><input type="hidden" asp-for="Form.Version" />
+<h2>@(Model.Form.Id.HasValue ? title + " 수정" : "새 " + title)</h2>
+<label class="cw-form-field">이름<input class="cw-form-control" asp-for="Form.Name" maxlength="100" required /></label>
+@if (projects) { <label class="cw-form-field">색상<input class="cw-form-control" asp-for="Form.Color" type="color" /></label><label class="organization-check cw-check-control"><input class="cw-checkbox" type="checkbox" asp-for="Form.IsPrivate" /> 비공개 프로젝트 (관리자만 조회·선택)</label>
+    @if (!Model.Form.Id.HasValue) { <p>프로젝트를 먼저 저장하면 아이콘을 업로드할 수 있습니다.</p> }
+}
+else { <label class="organization-check cw-check-control"><input class="cw-checkbox" type="checkbox" asp-for="Form.HandlesScheduleFeedback" /> 일정 제보 처리 부서</label> }
+@if (Model.Form.Id.HasValue) { <label class="organization-check cw-check-control"><input class="cw-checkbox" type="checkbox" asp-for="Form.Archived" /> @(projects ? "프로젝트 보관" : "부서 사용 중지")</label> }
+@if (projects || Model.Form.Id.HasValue) {
+    <fieldset class="cw-choice-group" data-workspace-choices="employee"><legend>@(projects ? "참여 직원" : "부서 책임자")</legend><label class="cw-form-field"><span>직원 검색</span><input class="cw-form-control" type="search" data-choice-search placeholder="이름·초성으로 검색" aria-label="직원 검색" /></label>
+    @foreach (var u in Model.Users.Where(u => !u.IsSharedAccount && !u.IsMaster && (projects ? u.IsActive || Model.Form.EmployeeIds.Contains(u.Id) : u.DepartmentId == Model.Form.Id && CompanyPortal.Services.OrganizationService.EligibleLead(u)))) {
+        var selected = Model.Form.EmployeeIds.Contains(u.Id);
+        <label data-choice-label><input type="checkbox" name="Form.EmployeeIds" value="@u.Id" checked="@selected" disabled="@(!Model.CanManage(u))" /> <span class="cw-entity-avatar" data-company-avatar="@u.Id">@u.Name[..1]</span><span data-choice-text>@u.Name @(u.IsPrivate ? "· 비공개" : "") <small>@u.Department @(!u.IsActive ? "· 비활성" : "") @(!Model.CanManage(u) ? "· 마스터 관리" : "")</small></span></label>
+        @if (selected && !Model.CanManage(u)) { <input type="hidden" name="Form.EmployeeIds" value="@u.Id" /> }
+    }
+    </fieldset>
+} else { <p>부서를 만든 뒤 직원을 배치하면 책임자를 지정할 수 있습니다.</p> }
+<p class="organization-hint">@(projects ? "참여 프로젝트는 일정 필터와 추천에 사용합니다. 비공개 프로젝트는 관리자만 열람·선택할 수 있습니다." : "제보 처리 부서의 활성 직원은 일반 프로젝트 제보를 접수·처리할 수 있습니다. 직원과 책임자를 모두 정리한 부서만 사용 중지할 수 있습니다.")</p>
+<button class="cw-button" data-variant="primary" type="submit" disabled="@Model.WriteLocked">저장</button>
+<div data-organization-result hidden></div>
+<a class="button button-secondary" href="/Admin/Organization?tab=@Model.Tab&id=@Model.Form.Id" target="_blank" rel="noopener" data-organization-reload>새 탭에서 최신 정보 확인</a>
+@if (Model.PostedDraft is not null) { <section><h3>전송한 입력 보관</h3><p class="organization-hint">현재 선택기에 없는 값도 아래 원문에 남겨 두었습니다. 새 탭의 최신 정보와 비교해 주세요. 이 화면을 닫으면 사라집니다.</p><pre class="organization-posted-draft">@Model.PostedDraft</pre></section> }
+</form>
+@if (projects && Model.Form.Id.HasValue && Model.ProjectId is not null) {
+    <section class="cw-profile-card" data-cw-project-icon data-image-write-locked="@(Model.IconWriteLocked ? "true" : "false")">
+        <h2>프로젝트 아이콘</h2><span class="cw-entity-avatar" data-company-project="@Model.Form.Id">P</span>
+        <p class="cw-help">아이콘은 조직 정보와 별도로 저장됩니다. 모든 서비스가 같은 아이콘을 사용합니다.</p>
+        <form method="post" asp-page-handler="Icon" enctype="multipart/form-data" data-project-icon-form>
+            <input type="hidden" name="ExpectedUserId" value="@Model.ExpectedUserId" /><input type="hidden" name="ProjectId" value="@Model.ProjectId" />
+            <input type="hidden" name="ExpectedVersion" value="@Model.ExpectedVersion" /><input type="hidden" name="Operation" value="save" />
+            <label class="cw-file-label">새 아이콘<input name="Photo" type="file" accept="image/png,image/jpeg,image/webp" data-project-icon-file aria-label="프로젝트 아이콘 이미지" /></label>
+            <p class="cw-help">PNG, JPG, WebP · 최대 8MB · 정사각형으로 잘라 저장합니다.</p>
+            <img class="cw-profile-preview" data-project-icon-preview hidden alt="저장할 프로젝트 아이콘 미리보기" />
+            <div class="cw-profile-actions"><button class="cw-button" data-variant="primary" type="submit" data-project-icon-save disabled>아이콘 저장</button><button class="cw-button" data-variant="danger" type="button" data-project-icon-remove disabled>아이콘 삭제</button></div>
+        </form>
+        <div data-project-icon-status hidden></div>
+        <a href="/Admin/Organization?tab=projects&id=@Model.ProjectId" target="_blank" rel="noopener">새 탭에서 현재 프로젝트 확인</a>
+        <noscript><p>아이콘 편집에는 JavaScript가 필요합니다. 스크립트 허용 후 다시 열어 주세요.</p></noscript>
+    </section>
+}
+</section></div>

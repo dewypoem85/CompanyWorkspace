@@ -1,0 +1,6 @@
+/* Loaded only by noscript: preserve native controls and server validation without a second editor. */
+html body .access-matrix-form .matrix-detail-row[data-cw-disclosure-panel][hidden] { display: table-row!important; }
+html body .html-account-draft [data-cw-disclosure-panel][hidden] { display: block!important; }
+.html-account-draft [data-cw-disclosure] { display: none; }
+.access-matrix-form [data-detail-toggle], .access-matrix-form [data-toggle-permission],
+.access-matrix-form [data-save-all], .access-matrix-form [data-reset-all] { display: none; }

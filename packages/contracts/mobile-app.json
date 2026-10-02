@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "versionName": "1.1.10",
+  "versionCode": 15,
+  "packageId": "com.nspg.companyworkspace",
+  "appName": "96%",
+  "startUrl": "https://company.example.com/",
+  "trustedOrigins": [
+    "https://company.example.com",
+    "https://schedule.example.com",
+    "https://leave.example.com",
+    "https://cs.example.com",
+    "https://statistics.example.com",
+    "https://sheet.example.com",
+    "https://iap.example.com"
+  ],
+  "signingCertificateSha256": "21:0E:DC:CB:2D:69:2D:B4:BA:FA:DA:97:08:2C:13:C5:FE:61:9E:83:0E:3D:F8:8E:05:0D:6B:B5:58:2B:B6:3F",
+  "icon": "packages/workspace-ui/assets/company-logo.png"
+}

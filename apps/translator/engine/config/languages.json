@@ -1,0 +1,247 @@
+{
+  "_readme": "언어/모델/키 문맥 규칙 설정. 새 언어는 languages 아래에 코드(예: POR)를 추가하면 코드 수정 없이 적용됩니다. 항목이 없으면 기본값을 쓰고 경고 로그를 남깁니다. 정규식 안의 유니코드는 \\u3040 처럼 JSON 이스케이프로 씁니다. 신규 언어 인식(헤더→코드)은 languages 항목에 name/display_name/aliases 를 넣으면 됩니다. normal_word 는 '통상/일반' 행 밀림 복구용 번역어.",
+  "default_tone_guide": "- Translate accurately and naturally into {lang_full}, maintaining action RPG gaming conventions.",
+  "default_contamination": {
+    "pattern": "[\\u3040-\\u30ff\\u4e00-\\u9fff\\u3400-\\u4dbf]",
+    "label": "일본어/한자"
+  },
+  "languages": {
+    "ENG": {
+      "tone_guide": "- Use Title Case for item and skill names. Keep UI buttons concise (e.g. 'Confirm', 'Equip').",
+      "glossary_col": "English",
+      "contamination": {
+        "pattern": "[\\u3040-\\u30ff\\u4e00-\\u9fff\\u3400-\\u4dbf]",
+        "label": "일본어/한자"
+      },
+      "bound_patterns": {
+        "excl_low": [
+          "\\b(below|under|less than|fewer than|lower than)\\b"
+        ],
+        "incl_low": [
+          "\\bor (below|less|lower|under|fewer)\\b",
+          "\\bat most\\b"
+        ],
+        "excl_high": [
+          "\\b(above|over|more than|greater than|higher than|exceeds?)\\b"
+        ],
+        "incl_high": [
+          "\\bor (above|more|higher|greater|over)\\b",
+          "\\bat least\\b"
+        ]
+      },
+      "normal_word": "Normal"
+    },
+    "JPN": {
+      "tone_guide": "- Use Katakana (カタカナ) for fantasy equipment/skills. Maintain polite form (です/ます) for UI/system dialogs, and clear concise noun endings (〜増加, 〜付与) for skill descriptions.",
+      "glossary_col": "Japanese",
+      "bound_patterns": {
+        "excl_low": [
+          "未満|を下回"
+        ],
+        "incl_low": [
+          "以下"
+        ],
+        "excl_high": [
+          "を超え|超過|を上回"
+        ],
+        "incl_high": [
+          "以上"
+        ]
+      },
+      "normal_word": "通常"
+    },
+    "CHS": {
+      "tone_guide": "- Follow Simplified Chinese gaming conventions for roguelike action RPGs.",
+      "glossary_col": "Chinese",
+      "contamination": {
+        "pattern": "[\\u3040-\\u309f\\u30a0-\\u30fa\\u30fc-\\u30ff]",
+        "label": "일본어 가나"
+      },
+      "bound_patterns": {
+        "excl_low": [
+          "低于|小于|少于|未满|不足"
+        ],
+        "incl_low": [
+          "以下|不高于|≤"
+        ],
+        "excl_high": [
+          "高于|大于|超过|多于"
+        ],
+        "incl_high": [
+          "以上|不低于|≥"
+        ]
+      },
+      "normal_word": "一般"
+    },
+    "CHT": {
+      "tone_guide": "- Follow Traditional Chinese (Taiwan/Hong Kong) official gaming terminology. Never use Simplified Chinese characters.",
+      "glossary_col": "Chinese (Taiwan)",
+      "contamination": {
+        "pattern": "[\\u3040-\\u309f\\u30a0-\\u30fa\\u30fc-\\u30ff]",
+        "label": "일본어 가나"
+      },
+      "bound_patterns": {
+        "excl_low": [
+          "低於|小於|少於|未滿|不足"
+        ],
+        "incl_low": [
+          "以下|不高於|≤"
+        ],
+        "excl_high": [
+          "高於|大於|超過|多於"
+        ],
+        "incl_high": [
+          "以上|不低於|≥"
+        ]
+      },
+      "script_check": {
+        "forbidden_chars": "电装标伤发击体动变关对应给过进头说时会后这们两长门间无军经种问国实专机极气导类图级统维态敌获圣闪",
+        "message": "번체(CHT) 내 간체자 잔존/복붙 감지: '{sample}' (정식 번체자로 교정 필요)"
+      },
+      "normal_word": "普通"
+    },
+    "SPA": {
+      "tone_guide": "- Ensure proper grammatical gender and number agreement (masculine/feminine, singular/plural) according to the noun context.",
+      "glossary_col": "Spain",
+      "contamination": {
+        "pattern": "[\\u3040-\\u30ff\\u4e00-\\u9fff\\u3400-\\u4dbf]",
+        "label": "일본어/한자"
+      },
+      "bound_patterns": {
+        "excl_low": [
+          "por debajo d|menos de|inferior a|menor (que|a)\\b"
+        ],
+        "incl_low": [
+          "o menos|o inferior|como máximo|igual o menor|\\bmáximo"
+        ],
+        "excl_high": [
+          "por encima d|más de|superior a|mayor (que|a)\\b|supera"
+        ],
+        "incl_high": [
+          "o más|o superior|como mínimo|al menos|igual o mayor|\\bmínimo"
+        ]
+      },
+      "normal_word": "Normal"
+    },
+    "GER": {
+      "tone_guide": "- Use clear German gaming terminology. Keep compound words natural and fit UI constraints.",
+      "glossary_col": "German",
+      "contamination": {
+        "pattern": "[\\u3040-\\u30ff\\u4e00-\\u9fff\\u3400-\\u4dbf]",
+        "label": "일본어/한자"
+      },
+      "bound_patterns": {
+        "excl_low": [
+          "\\bunter\\b|weniger als|kleiner als|niedriger als"
+        ],
+        "incl_low": [
+          "oder weniger|oder darunter|oder niedriger|höchstens|maximal|und weniger"
+        ],
+        "excl_high": [
+          "\\büber\\b|mehr als|größer als|höher als|überschreitet"
+        ],
+        "incl_high": [
+          "oder mehr|oder darüber|oder höher|mindestens|und mehr"
+        ]
+      },
+      "normal_word": "Normal"
+    },
+    "FRA": {
+      "tone_guide": "- Use standard French gaming terminology. Maintain correct accents and spacing before punctuation.",
+      "contamination": {
+        "pattern": "[\\u3040-\\u30ff\\u4e00-\\u9fff\\u3400-\\u4dbf]",
+        "label": "일본어/한자"
+      }
+    }
+  },
+  "models": {
+    "gemini_fallback": [
+      "gemini-3.8-flash",
+      "gemini-3.7-flash",
+      "gemini-3.6-flash",
+      "gemini-3.5-flash",
+      "gemini-flash-latest",
+      "gemini-flash-lite-latest"
+    ],
+    "gemini_exclude_keywords": [
+      "tts",
+      "image",
+      "transcribe",
+      "robotics",
+      "computer-use"
+    ],
+    "openai_default": "gpt-4o-mini",
+    "claude_default": "claude-3-5-sonnet-20241022"
+  },
+  "key_context_rules": [
+    {
+      "keywords": [
+        "UI",
+        "BTN",
+        "BUTTON",
+        "TITLE",
+        "MENU",
+        "POPUP",
+        "TAB"
+      ],
+      "context": "UI / Button (Concise, imperative verb or direct label)"
+    },
+    {
+      "keywords": [
+        "SKILL",
+        "PASSIVE",
+        "ACTIVE",
+        "ULTIMATE",
+        "ABILITY"
+      ],
+      "context": "Skill / Ability (Dark fantasy RPG spell or combat skill)"
+    },
+    {
+      "keywords": [
+        "ITEM",
+        "WEAPON",
+        "ARMOR",
+        "EQUIP",
+        "RELIC",
+        "ARTIFACT"
+      ],
+      "context": "Item / Equipment (Dark fantasy roguelike item)"
+    },
+    {
+      "keywords": [
+        "DIALOG",
+        "NPC",
+        "QUEST",
+        "STORY",
+        "TALK",
+        "SCRIPT"
+      ],
+      "context": "Dialogue / Story (Natural conversational spoken tone)"
+    },
+    {
+      "keywords": [
+        "DESC",
+        "EXPLANATION",
+        "INFO",
+        "TOOLTIP"
+      ],
+      "context": "Description / Tooltip (Accurate system description)"
+    }
+  ],
+  "default_key_context": "General in-game text",
+  "default_target_languages": [
+    "ENG",
+    "JPN",
+    "CHS",
+    "CHT",
+    "SPA"
+  ],
+  "default_ui_languages": [
+    "ENG",
+    "JPN",
+    "CHS",
+    "CHT",
+    "SPA",
+    "GER"
+  ]
+}

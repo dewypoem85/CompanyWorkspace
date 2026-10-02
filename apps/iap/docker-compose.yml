@@ -1,0 +1,54 @@
+name: product-upload
+services:
+  product-upload:
+    container_name: product-upload-product-upload-1
+    build: .
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    environment:
+      NODE_ENV: production
+      PORT: 4180
+      DATABASE_URL: postgres://iap:${IAP_DB_PASSWORD:?Set IAP_DB_PASSWORD}@iap-db:5432/iap
+      APP_ORIGIN: ${IAP_ORIGIN:-https://iap.example.com}
+      COMPANY_SSO_SHARED_SECRET: ${COMPANY_SSO_SHARED_SECRET:?Portal SSO secret required}
+      COMPANY_PORTAL_URL: ${COMPANY_PORTAL_URL:-https://company.example.com}
+      COMPANY_PORTAL_INTERNAL_URL: http://company-portal:8080
+      COOKIE_SECURE: 'true'
+      CONNECTOR_CONFIG_FILE: /run/secrets/iap-connectors.json
+      REVIEW_ASSET_DIR: /app/data/review-assets
+    volumes:
+      - ${IAP_SECRETS_DIR:-../../../private/iap}:/run/secrets:ro
+      - iap-review-assets:/app/data/review-assets
+    networks: [default,company-services]
+    depends_on:
+      iap-db:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD,node,-e,"fetch('http://127.0.0.1:4180/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  iap-db:
+    container_name: product-upload-iap-db-1
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: iap
+      POSTGRES_USER: iap
+      POSTGRES_PASSWORD: ${IAP_DB_PASSWORD:?Set IAP_DB_PASSWORD}
+    volumes: [iap-db:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL,pg_isready -U iap]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  iap-db:
+    name: product-upload_iap-db
+  iap-review-assets:
+    name: product-upload_iap-review-assets
+networks:
+  company-services:
+    external: true
+    name: company-services

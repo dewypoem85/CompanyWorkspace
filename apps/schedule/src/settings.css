@@ -1,0 +1,28 @@
+/* Management owns information layout; native controls and their states are shared. */
+html body .task-dialog .detail-panel.schedule-settings{padding:0;background:var(--cw-surface);color:var(--cw-text)}
+.schedule-settings-toolbar{position:sticky;top:0;z-index:8;display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:64px;padding:12px clamp(32px,4vw,52px);background:var(--cw-surface);border-bottom:1px solid var(--cw-line);box-shadow:0 8px 18px color-mix(in srgb,var(--cw-canvas) 42%,transparent)}
+.schedule-settings-toolbar h1{margin:0;font-size:1.5rem}.schedule-settings-toolbar .close{position:static;flex:0 0 auto;margin:0;font-size:1.4rem}
+.schedule-settings-content{padding:24px clamp(32px,4vw,52px) 36px}
+.schedule-settings .settings-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}
+.schedule-settings .range-field{margin:20px 0;max-width:300px}
+.schedule-settings .settings-list{display:flex;flex-direction:column;gap:8px;margin:20px 0;min-width:0}
+.schedule-settings .settings-list>button{width:100%;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;text-align:left}
+.schedule-settings .settings-list>button.milestone-card{display:flex;flex-direction:column;align-items:stretch;gap:9px;padding:12px 14px}
+.milestone-card-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;width:100%}
+.milestone-card-heading .milestone-card-title{font-size:1rem;line-height:1.45}
+.milestone-card-heading .milestone-project{flex:0 1 auto}
+.schedule-settings .settings-list .milestone-project{color:inherit;max-width:100%}
+.schedule-settings .milestone-card-date{overflow-wrap:anywhere}
+.schedule-settings .milestone-card-title{grid-column:1/-1;min-width:0;overflow-wrap:anywhere}
+.schedule-settings .settings-list small{color:var(--cw-muted)}
+.schedule-settings .milestone-editor{border-top:1px solid var(--cw-line);padding-top:24px}
+.schedule-settings .milestone-editor>.cw-form-field{margin:20px 0}
+.milestone-schedule-editor{border:1px solid var(--cw-line);border-radius:8px;padding:14px;margin:12px 0}.milestone-schedule-heading{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.milestone-schedule-heading .milestone-countdown{margin-left:auto}.milestone-schedule-heading .cw-button{flex:none}.milestone-schedule-editor h3{margin:0;font-size:1rem}.milestone-schedule-editor .milestone-memo-field{grid-column:1/-1}.milestone-schedule-list{display:grid;gap:7px;padding:0;list-style:none;width:100%;margin:0}.milestone-schedule-list li{display:grid;grid-template-columns:auto minmax(6.8rem,auto) minmax(0,1fr) auto;align-items:center;gap:8px 12px;border:1px solid var(--cw-line);border-radius:7px;padding:8px 10px;background:color-mix(in srgb,var(--cw-surface) 92%,var(--cw-accent))}.milestone-schedule-list time{font-weight:700;font-size:.82rem}.milestone-schedule-list .milestone-schedule-memo{min-width:0;overflow-wrap:anywhere}.milestone-schedule-list .milestone-countdown{margin-left:0;justify-content:flex-end}
+.schedule-settings>section[aria-label="주요 일정 상세"] .milestone-schedule-list{margin:14px 0 24px}
+html body .schedule-settings .milestone-fields{padding:0;margin:20px 0}
+.schedule-settings .form-actions{flex-wrap:wrap}
+.milestone-authorship{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0;color:var(--cw-muted);font-size:.78rem;line-height:1.5}.milestone-authorship b{color:var(--cw-text)}
+.milestone-history{border-top:1px solid var(--cw-line);margin-top:28px;padding-top:22px}.milestone-history>h3{margin-top:0}.milestone-history article{border:1px solid var(--cw-line);border-radius:9px;padding:12px 14px;margin:10px 0;background:color-mix(in srgb,var(--cw-surface) 96%,var(--cw-accent))}.milestone-history article header{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px}.milestone-history article header span{color:var(--cw-muted);font-size:.82rem}.milestone-history ul{display:grid;gap:8px;list-style:none;padding:0;margin:12px 0 0}.milestone-history li{display:grid;grid-template-columns:minmax(6rem,auto) minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:start;font-size:.83rem}.milestone-history del,.milestone-history ins{white-space:pre-wrap;overflow-wrap:anywhere;border-radius:5px;padding:5px 7px;text-decoration:none}.milestone-history del{background:color-mix(in srgb,#ef4444 13%,transparent);color:var(--cw-muted)}.milestone-history ins{background:color-mix(in srgb,#22c55e 13%,transparent)}
+@media(max-width:600px){.schedule-settings .settings-list>button{grid-template-columns:minmax(0,1fr) auto}.milestone-card-heading{align-items:flex-start;flex-direction:column;gap:5px}.milestone-schedule-list li{grid-template-columns:auto minmax(0,1fr)}.milestone-schedule-list .milestone-schedule-memo,.milestone-schedule-list .milestone-countdown{grid-column:1/-1;justify-content:flex-start}.milestone-schedule-heading .milestone-countdown{order:3;width:100%;margin-left:0}.milestone-schedule-heading .cw-button{margin-left:auto}}
+@media(max-width:600px){.milestone-history li{grid-template-columns:1fr}.milestone-history article header{flex-direction:column}}
+@media(max-width:600px){.schedule-settings-toolbar{min-height:56px;padding:8px 16px}.schedule-settings-toolbar h1{font-size:1.25rem}.schedule-settings-content{padding:20px 16px 32px}}

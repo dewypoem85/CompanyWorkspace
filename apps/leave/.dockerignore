@@ -1,0 +1,14 @@
+.git
+.github
+.gitignore
+.env
+.env.*
+/data/backups
+/data-keys
+/backups
+/backup
+bin
+obj
+*.db
+*.db-shm
+*.db-wal

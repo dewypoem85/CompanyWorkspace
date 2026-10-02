@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PlayFab 로그 검색 · CS</title>
+  <script src="https://company.example.com/js/company-workspace.js?v=a1b88b90a3ac4e17"></script>
+
+  <script src="/theme.js?v=20260908.1"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260908.1">
+  <link rel="stylesheet" href="/playfab-logs.css" data-cs-page-style>
+  <link rel="stylesheet" href="/theme.css">
+  <script type="module" src="/playfab-logs.js?v=20260908.1" data-cs-page-module></script>
+  <script type="module" src="/cs-navigation.js"></script>
+<link rel="stylesheet" href="https://company.example.com/css/company-workspace.css?v=a1b88b90a3ac4e17">
+</head>
+<body>
+  <div data-company-workspace data-company-service="cs"></div>
+  <div class="app-frame">
+    <aside class="app-sidebar cw-sidebar" data-workspace-navigation="cs"></aside>
+    <div class="workspace" data-workspace-view="cs.logs">
+      <header class="workspace-topbar"><div class="breadcrumbs"><span>CS Console</span><b>/</b><strong>로그 검색</strong></div><div id="logModeBadge" class="cw-state-pill" data-tone="neutral">설정 확인 중</div></header>
+      <main class="workspace-content workspace-wide">
+        <header class="page-header">
+          <div class="page-title-icon logs-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8m-8 4h5"/></svg></div>
+          <div><p class="eyebrow">Live telemetry</p><h1>PlayFab 로그 검색</h1><p class="description">라이브 PlayFab 이벤트를 기간·UID·이벤트 이름으로 빠르게 추적합니다.</p></div>
+        </header>
+        <section class="context-grid context-grid-two">
+          <section class="cw-callout" data-tone="info" role="note"><strong>검색 대상</strong><p>Azure Blob Storage의 라이브 Parquet <code>EventData</code> 본문을 검색합니다.</p></section>
+          <section class="cw-callout" data-tone="warning" role="note"><strong>검색 비용 최적화</strong><p>가능한 경우 UID와 좁은 기간을 함께 지정해 검색 범위를 줄이세요.</p></section>
+        </section>
+
+    <section id="logMessageBox" hidden></section>
+
+    <section class="card">
+      <div class="card-heading">
+        <div>
+          <p class="step">SEARCH</p>
+          <h2>검색 조건</h2>
+        </div>
+        <span id="sourceSummary" class="muted">라이브 로그 설정 확인 중</span>
+      </div>
+
+      <form id="logSearchForm" class="cw-form-fields" novalidate>
+        <label class="cw-form-field">
+          <span>검색 대상</span>
+          <input id="logSource" value="라이브 서버" readonly class="cw-form-control">
+          <small id="logTitleIdText">Title ID 확인 중</small>
+        </label>
+
+        <label class="cw-form-field">
+          <span>PlayFab UID <em class="optional">선택</em></span>
+          <input id="logPlayFabId" autocomplete="off" spellcheck="false" placeholder="예: 25C2B21CDCE95200" class="cw-form-control">
+          <small>입력하면 UID 컬럼으로 파일을 먼저 선별합니다.</small>
+        </label>
+
+        <label class="cw-form-wide cw-form-field">
+          <span>로그 검색어</span>
+          <input id="logQuery" autocomplete="off" spellcheck="false" maxlength="300" required placeholder="예: 스킨 젬 / 기도석 구매 / MISSION_120" class="cw-form-control" aria-describedby="logQueryHelp logQueryError">
+          <small id="logQueryHelp">EventData JSON 전체를 대소문자 구분 없이 검색합니다.</small>
+          <small id="logQueryError" class="cw-field-error" hidden></small>
+        </label>
+
+        <label class="cw-form-field">
+          <span>검색 방식</span>
+          <select id="logSearchMode" class="cw-form-control">
+            <option value="all">모든 단어 포함</option>
+            <option value="exact">정확한 문구 포함</option>
+            <option value="any">단어 하나라도 포함</option>
+          </select>
+        </label>
+
+        <label class="cw-form-field">
+          <span>이벤트 이름 <em class="optional">선택</em></span>
+          <input id="logEventName" autocomplete="off" spellcheck="false" maxlength="160" placeholder="예: player_executed_cloudscript" class="cw-form-control">
+          <small>부분 일치로 추가 필터링합니다.</small>
+        </label>
+
+        <label class="cw-form-field">
+          <span>시작 시각</span>
+          <input id="logFrom" type="datetime-local" step="60" required class="cw-form-control" aria-describedby="logFromError">
+          <small id="logFromError" class="cw-field-error" hidden></small>
+        </label>
+
+        <label class="cw-form-field">
+          <span>종료 시각</span>
+          <input id="logTo" type="datetime-local" step="60" required class="cw-form-control" aria-describedby="logToError">
+          <small id="logToError" class="cw-field-error" hidden></small>
+        </label>
+
+        <div class="cw-form-wide quick-range-row" aria-label="빠른 기간 선택">
+          <span class="muted">빠른 기간</span>
+          <button type="button" class="cw-button quick-range" data-hours="1" data-size="compact">최근 1시간</button>
+          <button type="button" class="cw-button quick-range" data-hours="6" data-size="compact">최근 6시간</button>
+          <button type="button" class="cw-button quick-range" data-hours="24" data-size="compact">최근 24시간</button>
+          <button type="button" class="cw-button quick-range" data-hours="168" data-size="compact">최근 7일</button>
+          <button type="button" class="cw-button quick-range" data-hours="720" data-size="compact">최근 30일</button>
+        </div>
+
+        <label class="cw-form-field">
+          <span>정렬</span>
+          <select id="logSort" class="cw-form-control">
+            <option value="desc">최신순</option>
+            <option value="asc">오래된순</option>
+          </select>
+        </label>
+
+        <label class="cw-form-field">
+          <span>최대 결과 수</span>
+          <select id="logLimit" class="cw-form-control">
+            <option value="50">50건</option>
+            <option value="100" selected>100건</option>
+            <option value="200">200건</option>
+            <option value="500">500건</option>
+          </select>
+        </label>
+
+        <label id="longRangeConfirmation" class="cw-form-wide long-range-confirmation cw-check-control hidden">
+          <input id="confirmLongRange" class="cw-checkbox" type="checkbox">
+          <span>
+            <strong>장기 검색 실행 확인</strong>
+            <small id="longRangeConfirmationText">시간 파티션을 나누어 처리하며 검색 시간이 오래 걸릴 수 있습니다.</small>
+          </span>
+        </label>
+        <p id="longRangeError" class="cw-form-wide cw-field-error" hidden></p>
+
+        <div class="form-actions cw-form-wide log-search-actions">
+          <span id="rangeHint" class="muted"></span>
+          <button id="logSearchButton" type="submit" class="cw-button" disabled data-variant="primary">로그 검색</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="logJobCard" class="card log-job-card hidden">
+      <div class="card-heading log-job-heading">
+        <div>
+          <p class="step">BACKGROUND SEARCH</p>
+          <h2 id="logJobTitle">검색 준비 중</h2>
+        </div>
+        <div class="log-job-controls">
+          <button id="logCancelButton" type="button" class="cw-button">검색 취소</button>
+          <span id="logJobStatus" class="cw-state-pill" data-tone="neutral">QUEUED</span>
+        </div>
+      </div>
+      <div class="log-job-progress">
+        <span id="logJobProgressBar" role="progressbar" aria-label="로그 검색 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span>
+      </div>
+      <div class="log-job-progress-copy">
+        <strong id="logJobProgressText">검색 작업을 준비하고 있습니다.</strong>
+        <span>페이지를 잠시 벗어나도 서버에서 계속 검색합니다.</span>
+      </div>
+      <div id="logJobStats" class="log-job-stats"></div>
+    </section>
+
+    <section id="logResultCard" class="card hidden">
+      <div class="card-heading">
+        <div>
+          <p class="step">RESULT</p>
+          <h2 id="logResultSummary">검색 결과</h2>
+        </div>
+        <div class="inline-actions compact-actions">
+          <div class="log-view-switch" role="group" aria-label="결과 표시 방식">
+            <button type="button" class="cw-button" data-log-view="simple" aria-pressed="true" data-variant="quiet" data-size="compact">간단히 보기</button>
+            <button type="button" data-log-view="detail" aria-pressed="false" class="cw-button" data-variant="quiet" data-size="compact">상세 보기</button>
+          </div>
+          <button id="logCsvButton" type="button" class="cw-button" disabled>CSV 다운로드</button>
+        </div>
+      </div>
+
+      <dl id="logScanStats" class="detail-grid log-stats"></dl>
+      <p id="logResultCriteria" class="log-criteria"></p>
+      <section id="logScanWarning" hidden></section>
+
+      <div id="logResults" class="log-results"></div>
+    </section>
+
+        <footer>Azure Storage SAS Token과 PlayFab 인증정보는 서버 환경변수에서만 사용하며 브라우저로 전달하지 않습니다.</footer>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

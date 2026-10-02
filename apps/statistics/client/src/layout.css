@@ -1,0 +1,3 @@
+/* Statistics owns data visualisation geometry only. The global frame is owned by company-workspace. */
+#root { min-height:calc(100dvh - var(--cw-header-height)); }
+#root .statistics-main :is(.dashboard-grid,.detail-grid,.split,.panel,.component,.entity-name) { min-width:0; }

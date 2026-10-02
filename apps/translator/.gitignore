@@ -1,0 +1,24 @@
+# 스마트 번역: 키·설정·실행 결과는 커밋하지 않는다 (AGENTS.md: .env/실제 계정 데이터/인증 키/DB 커밋 금지)
+
+# 서비스 계정 키 / 런타임 설정 (API 키는 암호화돼 있어도 커밋 금지). config/languages.json 은 추적한다.
+engine/keys/
+engine/config/config.json
+
+# 실행 상태 / 캐시 / 결과물
+engine/data/audit_cache.json
+engine/data/schedule_state.json
+engine/output/
+engine/__pycache__/
+
+# 예전 구조(루트)에 남아 있을 수 있는 파일 (migrate 전)
+engine/config.json
+engine/service_account*.json
+engine/nspg-*.json
+engine/audit_cache.json
+engine/schedule_state.json
+engine/audit_report_*.xlsx
+engine/evidence/
+
+# 빌드 산출물
+dist/
+node_modules/

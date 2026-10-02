@@ -1,0 +1,29 @@
+import {useLayoutEffect,useRef,useState,type RefObject} from 'react';
+
+export type DisclosureChange={key:string;open:boolean;changes:{key:string;open:boolean}[]};
+type Controller={refresh:()=>void;destroy:()=>void;setOpen:(key:string,open:boolean)=>boolean};
+type Options={single?:boolean;onChange?:(change:DisclosureChange)=>void};
+
+// React owns the content; CompanyDisclosure alone owns hidden, ARIA and focus.
+// Keep panels mounted with an initial `hidden` prop. Do not also render hidden={state}.
+export function useWorkspaceDisclosure<T extends HTMLElement>(root:RefObject<T|null>,options:Options={}) {
+  const controller=useRef<Controller|null>(null),latest=useRef(options);
+  const binding=useRef<{node:T;single?:boolean;dispose:()=>void}|null>(null);
+  latest.current=options;
+  const [ready,setReady]=useState(false);
+  useLayoutEffect(()=>{
+    const node=root.current;
+    const shared=(window as unknown as {CompanyDisclosure?:{attach:(root:HTMLElement,options:{single?:boolean})=>Controller}}).CompanyDisclosure;
+    if(binding.current&&(binding.current.node!==node||binding.current.single!==options.single||!shared)){
+      binding.current.dispose();binding.current=null;controller.current=null;
+    }
+    if(!node||!shared){setReady(false);return;}
+    if(binding.current){controller.current?.refresh();return;}
+    const change=(event:Event)=>{if(event.target===node)latest.current.onChange?.((event as CustomEvent<DisclosureChange>).detail);};
+    node.addEventListener('workspace-disclosure-change',change);
+    const instance=shared.attach(node,{single:options.single});controller.current=instance;setReady(true);
+    binding.current={node,single:options.single,dispose:()=>{node.removeEventListener('workspace-disclosure-change',change);instance.destroy();}};
+  });
+  useLayoutEffect(()=>()=>{binding.current?.dispose();binding.current=null;controller.current=null;},[]);
+  return {ready,setOpen:(key:string,open:boolean)=>controller.current?.setOpen(key,open)??false};
+}

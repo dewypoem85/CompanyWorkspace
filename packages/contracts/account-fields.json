@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "fields": [
+    { "key": "AccountType", "label": "계정 유형", "type": "string", "default": "employee", "section": "identity", "placement": "summary" },
+    { "key": "IsActive", "label": "계정 상태", "type": "bool", "default": true, "section": "identity", "placement": "summary" },
+    { "key": "Name", "label": "이름", "type": "string", "default": "", "maxLength": 100, "section": "identity", "placement": "detail" },
+    { "key": "Email", "label": "Google 이메일", "type": "string", "default": "", "maxLength": 200, "section": "identity", "placement": "detail" },
+    { "key": "DepartmentId", "label": "부서", "type": "long?", "section": "identity", "placement": "detail" },
+    { "key": "HireDate", "label": "입사일", "type": "DateOnly?", "section": "identity", "placement": "detail" },
+    { "key": "BirthDate", "label": "생일", "type": "string", "default": "", "maxLength": 5, "section": "identity", "placement": "detail" },
+    { "key": "ProjectIds", "label": "참여 프로젝트", "type": "long[]", "section": "identity", "placement": "detail" },
+    { "key": "IsPrivate", "label": "비공개 직원", "type": "bool", "section": "identity", "placement": "detail" },
+    { "key": "Role", "label": "회사 역할", "type": "string", "default": "employee", "section": "access", "placement": "summary" },
+    { "key": "Permissions", "label": "추가 시스템 접근", "type": "string[]", "section": "access", "placement": "permissions" }
+  ]
+}

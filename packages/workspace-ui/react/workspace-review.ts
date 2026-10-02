@@ -1,0 +1,17 @@
+export type ReviewField = {
+  key: string; label: string; before: string[]; draft: string[]; current: string[];
+  set?: boolean; entityKind?: 'employee' | 'project'; format?: (values: string[]) => string;
+};
+export type ReviewItem = {id: string; label: string; entityKind?: 'employee' | 'project'; fields: ReviewField[]};
+export type ReviewSelection = {id: string; fields: Record<string, string[]>};
+export type ReviewOptions = {
+  title?: string; items: ReviewItem[]; returnFocus?: HTMLElement; signal?: AbortSignal;
+  validate?: (items: ReviewSelection[]) => string | null | undefined;
+};
+
+// The shared DOM component owns the dialog. React callers own reads, drafts and save authorization.
+export function openWorkspaceReview(options: ReviewOptions): Promise<ReviewSelection[] | null> {
+  const renderer = (window as unknown as {CompanyReview?: {open: (options: ReviewOptions) => Promise<ReviewSelection[] | null>}}).CompanyReview;
+  if (!renderer) return Promise.reject(new Error('공통 비교 화면을 불러오지 못했습니다. 초안을 유지한 채 다시 확인해 주세요.'));
+  return renderer.open(options);
+}

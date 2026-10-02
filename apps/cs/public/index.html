@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CS 도구</title>
+  <script src="https://company.example.com/js/company-workspace.js?v=a1b88b90a3ac4e17"></script>
+
+  <script src="/theme.js?v=20260908.1"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260908.1">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/steam-refunds.css" data-cs-page-style>
+  <script type="module" src="/app.js?v=20260921.2" data-cs-page-module></script>
+  <script type="module" src="/cs-navigation.js"></script>
+<link rel="stylesheet" href="https://company.example.com/css/company-workspace.css?v=a1b88b90a3ac4e17">
+</head>
+<body>
+  <div data-company-workspace data-company-service="cs"></div>
+  <div class="app-frame">
+    <aside class="app-sidebar cw-sidebar" data-workspace-navigation="cs"></aside>
+    <div class="workspace" data-workspace-view="cs.refunds">
+      <header class="workspace-topbar">
+        <div class="breadcrumbs"><span>CS Console</span><b>/</b><strong>Steam 환불</strong></div>
+        <div id="environmentBadge" class="cw-state-pill" data-tone="neutral">설정 확인 중</div>
+      </header>
+      <main class="workspace-content">
+        <header class="page-header">
+          <div class="page-title-icon refund-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 11h2m3 0h2M6 17h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2Z"/></svg></div>
+          <div>
+            <p class="eyebrow">Steam commerce</p>
+            <h1>Steam 환불</h1>
+            <p class="description">주문 번호로 거래를 조회하거나 Steam 계정의 결제 내역을 확인한 뒤 전체 환불을 안전하게 처리합니다.</p>
+          </div>
+        </header>
+        <section class="workflow-strip" aria-label="환불 처리 단계">
+          <div class="active"><span>1</span><p><strong>거래 조회</strong><small>주문 또는 Steam ID 검색</small></p></div>
+          <i></i>
+          <div><span>2</span><p><strong>내용 확인</strong><small>결제 상태와 항목 검토</small></p></div>
+          <i></i>
+          <div><span>3</span><p><strong>전체 환불</strong><small>사유 기록 후 실행</small></p></div>
+        </section>
+        <section class="tool-panel">
+          <section class="cw-callout" data-tone="warning" role="note">
+            <strong>전체 환불만 지원</strong>
+            <p>Steam RefundTxn은 부분 환불을 지원하지 않습니다. 실행하면 해당 주문의 원결제 금액 전체가 환불됩니다.</p>
+          </section>
+
+      <section class="card">
+        <div class="card-heading">
+          <div>
+            <p class="step">STEP 1</p>
+            <h2>거래 조회</h2>
+          </div>
+          <span id="appIdText" class="muted">App ID 확인 중</span>
+        </div>
+
+        <form id="queryForm" novalidate>
+          <fieldset id="queryFields" class="cw-form-fields steam-fields" disabled>
+          <label class="cw-form-field">
+            <span>Order ID / Transaction ID</span>
+            <input id="orderId" name="orderId" inputmode="numeric" autocomplete="off" placeholder="Steamworks에서 확인한 주문 또는 거래 번호" class="cw-form-control" aria-describedby="orderIdHelp queryError">
+            <small id="orderIdHelp">Order ID로 먼저 조회하고, 해당하지 않으면 Transaction ID로 자동 조회합니다.</small>
+          </label>
+          <label class="cw-form-field">
+            <span>Steam ID</span>
+            <input id="steamId" name="steamId" inputmode="numeric" autocomplete="off" placeholder="SteamID64" class="cw-form-control" aria-describedby="steamIdHelp queryError">
+            <small id="steamIdHelp">Steam ID만 입력하면 이 계정의 전체 결제 내역을 조회합니다.</small>
+          </label>
+          <p id="queryError" class="cw-form-wide cw-field-error" hidden></p>
+          <p class="cw-form-wide query-guide">둘 중 하나만 입력해도 됩니다. 둘 다 입력하면 주문 소유자가 해당 Steam 계정인지 추가로 확인합니다.</p>
+          <div class="form-actions cw-form-wide">
+            <button id="queryButton" type="submit" class="cw-button" data-variant="primary">거래 조회</button>
+          </div>
+          </fieldset>
+        </form>
+      </section>
+
+      <section id="steamMessageBox" hidden></section>
+
+      <section id="historyCard" class="card hidden">
+        <div class="card-heading">
+          <div>
+            <p class="step">Steam ID 조회 결과</p>
+            <h2>결제 내역</h2>
+          </div>
+          <span id="historyCount" class="cw-state-pill" data-tone="neutral">0건</span>
+        </div>
+        <p id="historyMeta" class="muted"></p>
+        <div class="cw-table-scroll" tabindex="0" role="region" aria-label="Steam 계정 결제 내역">
+          <table class="cw-data-table history-table">
+            <thead>
+              <tr><th>거래 시각</th><th>구매 상품</th><th>Order ID</th><th>상태</th><th>결제 금액</th><th>상세</th></tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+        <template id="historyRowTemplate">
+          <tr data-history-row>
+            <td data-history-time></td><td data-history-products></td><td data-history-order></td>
+            <td data-history-status></td><td data-history-amount></td>
+            <td><button type="button" class="cw-button" data-variant="secondary" data-history-detail data-cw-closed-label="상세 보기" data-cw-open-label="상세 닫기">상세 보기</button></td>
+          </tr>
+          <tr class="history-detail-row" data-history-panel hidden>
+            <td colspan="6">
+              <div class="cw-table-detail history-detail">
+                <dl class="history-detail-grid">
+                  <div><dt>Order ID</dt><dd data-history-detail-order></dd></div>
+                  <div><dt>Transaction ID</dt><dd data-history-detail-transaction></dd></div>
+                  <div><dt>Steam ID</dt><dd data-history-detail-steam></dd></div>
+                  <div><dt>거래 시각</dt><dd data-history-detail-time></dd></div>
+                  <div><dt>국가 / 통화</dt><dd data-history-detail-locale></dd></div>
+                  <div><dt>거래 상태</dt><dd data-history-detail-status></dd></div>
+                </dl>
+                <div class="cw-table-scroll" tabindex="0" role="region" aria-label="주문 상품 상세">
+                  <table class="cw-data-table history-items-table">
+                    <thead><tr><th>상품</th><th>상품 키</th><th>Item ID</th><th>수량</th><th>상품 금액</th><th>VAT</th><th>합계</th><th>상태</th></tr></thead>
+                    <tbody data-history-items></tbody>
+                  </table>
+                </div>
+                <div class="history-detail-actions">
+                  <p>환불을 진행하려면 현재 거래를 Steam에서 다시 확인한 뒤 환불 입력 화면으로 이동합니다.</p>
+                  <button type="button" class="cw-button" data-variant="primary" data-history-open-refund>이 주문 환불 검토</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </template>
+      </section>
+
+      <section id="resultCard" class="card hidden">
+        <div class="card-heading">
+          <div>
+            <p class="step">조회 결과</p>
+            <h2>거래 정보</h2>
+          </div>
+          <span id="statusBadge" class="cw-state-pill" data-tone="neutral">-</span>
+        </div>
+
+        <dl class="detail-grid">
+          <div><dt>Order ID</dt><dd id="resultOrderId">-</dd></div>
+          <div><dt>Transaction ID</dt><dd id="resultTransactionId">-</dd></div>
+          <div><dt>Steam ID</dt><dd id="resultSteamId">-</dd></div>
+          <div><dt>Steam ID 검증</dt><dd id="steamIdMatch" class="cw-state-pill" data-tone="neutral">-</dd></div>
+          <div><dt>거래 시각</dt><dd id="resultTime">-</dd></div>
+          <div><dt>국가 / 통화</dt><dd id="resultLocale">-</dd></div>
+        </dl>
+
+        <div class="cw-table-scroll" tabindex="0" role="region" aria-label="거래 항목">
+          <table class="cw-data-table">
+            <thead>
+              <tr><th>상품</th><th>상품 키</th><th>Item ID</th><th>수량</th><th>상품 금액</th><th>VAT</th><th>합계</th><th>상태</th></tr>
+            </thead>
+            <tbody id="itemsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="refundCard" class="card danger-card hidden">
+        <div class="card-heading">
+          <div>
+            <p class="step danger-text">STEP 2</p>
+            <h2>전체 환불 실행</h2>
+          </div>
+        </div>
+
+        <form id="refundForm" novalidate>
+          <fieldset id="refundFields" class="cw-form-fields steam-fields" disabled>
+          <label class="cw-form-wide cw-form-field">
+            <span>환불 사유</span>
+            <textarea id="reason" name="reason" rows="4" maxlength="500" required placeholder="CS 문의 번호와 환불 사유를 구체적으로 작성하세요." class="cw-form-control" aria-describedby="reasonHelp reasonError"></textarea>
+            <small id="reasonHelp">감사 로그에 기록됩니다. 최소 5자, 최대 500자.</small>
+            <small id="reasonError" class="cw-field-error" hidden></small>
+          </label>
+          <label class="cw-form-wide cw-form-field">
+            <span>Order ID 재입력</span>
+            <input id="confirmationOrderId" name="confirmationOrderId" inputmode="numeric" autocomplete="off" required placeholder="조회 결과에 표시된 실제 Order ID를 다시 입력하세요." class="cw-form-control" aria-describedby="confirmationOrderIdError">
+            <small id="confirmationOrderIdError" class="cw-field-error" hidden></small>
+          </label>
+          <div class="form-actions cw-form-wide">
+            <button id="refundButton" type="submit" class="cw-button" data-variant="danger">전체 환불 실행</button>
+          </div>
+          </fieldset>
+        </form>
+      </section>
+    </section>
+
+        <footer>민감한 인증정보는 브라우저로 전달되지 않으며 서버 환경변수에서만 사용됩니다.</footer>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,1310 @@
+@page
+@model LeaveManager.Pages.Leave.IndexModel
+@{
+    var week = new[] { "일", "월", "화", "수", "목", "금", "토" };
+    var today = LeaveManager.Services.AppTime.Today;
+    var prevMonth = new DateOnly(Model.Year, Model.Month, 1).AddMonths(-1);
+    var nextMonth = new DateOnly(Model.Year, Model.Month, 1).AddMonths(1);
+}
+<link rel="stylesheet" href="~/css/year-calendar.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/leave-application.css" asp-append-version="true" />
+
+<section class="page-title-row">
+    <div>
+        <p class="eyebrow">Leave dashboard</p>
+        <h1><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="@Model.Employee.Id">@System.Globalization.StringInfo.GetNextTextElement(Model.Employee.Name)</span>@Model.Employee.Name 님의 연차</h1>
+        @if (Model.IsAdminPreview)
+        {
+            <p class="admin-preview-banner">관리자 대신보기 모드입니다. 신청·취소 작업은 할 수 없고 화면 확인만 가능합니다.</p>
+        }
+    </div>
+    <div class="title-actions">
+        @if (Model.CurrentEmployee.IsAdmin)
+        {
+            <form method="get" class="view-as-form">
+                <input type="hidden" name="Year" value="@Model.Year" />
+                <input type="hidden" name="Month" value="@Model.Month" />
+                <input type="hidden" name="CalendarView" value="@Model.CalendarView" />
+                <input type="hidden" name="RequestLimit" value="@Model.RequestLimit" />
+                <input type="hidden" name="SelfOnly" value="@(Model.SelfOnly ? "true" : "false")" />
+                <label class="cw-form-field">대신보기
+                    <select class="cw-form-control" name="ViewEmployeeId" data-company-picker="employee" data-company-local="true" data-cw-auto-submit>
+                        <option value="">내 화면</option>
+                        @foreach (var e in Model.ViewableEmployees)
+                        {
+                            if (Model.ViewEmployeeId == e.Id) { <option value="@e.Id" selected>@e.Name (@e.Email)</option> }
+                            else { <option value="@e.Id">@e.Name (@e.Email)</option> }
+                        }
+                    </select>
+                </label>
+            </form>
+        }
+        <a class="btn btn-secondary" asp-page="/Leave/Usage">사용 통계</a>
+        @if (!Model.IsAdminPreview)
+        {
+            <button type="button" class="cw-button" data-variant="primary" id="openApplyPanel">연차 신청</button>
+        }
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div data-workspace-state="error" data-state-title="처리 내용을 확인해 주세요." data-state-message="@Model.Error"><noscript>@Model.Error</noscript></div>
+}
+@if (Model.AdminForceRawDraft is not null)
+{
+    <section class="admin-force-recovery" aria-label="관리자 연차 제출 내용">
+        <p>제출한 내용은 아래에 보관했습니다. 이 화면에서 강제 추가·삭제를 반복하지 말고, 새 탭에서 현재 연차 내역을 확인해 주세요.</p>
+        <a asp-page="/Leave/Index" target="_blank" rel="noopener">현재 연차 내역 확인</a>
+        <pre>@Model.AdminForceRawDraft</pre>
+    </section>
+}
+@if (Model.ExternalScheduleRawDraft is not null)
+{
+    <section class="external-schedule-recovery" aria-label="외부 일정 제출 내용">
+        <p>제출한 내용은 아래에 보관했습니다. 이 화면에서 외부 일정 변경을 반복하지 말고, 새 탭에서 현재 일정을 확인해 주세요.</p>
+        <a asp-page="/Leave/Index" target="_blank" rel="noopener">현재 일정 확인</a>
+        <pre>@Model.ExternalScheduleRawDraft</pre>
+    </section>
+}
+
+<div class="metric-grid compact-metrics">
+    <article class="metric-card">
+        <span>사용</span>
+        <strong>@Model.CurrentYearUsedDays</strong>
+        <small>일 · 지급 @(Model.CurrentYearGrantedDays)일</small>
+        @if (Model.CurrentYearPendingDays > 0)
+        {
+            <small>승인 대기 @(Model.CurrentYearPendingDays)일</small>
+        }
+    </article>
+    <article class="metric-card accent">
+        <span>남은 연차</span>
+        <strong>@Model.Balance.Available</strong>
+        <small>일</small>
+    </article>
+    @if (Model.OutstandingAdvanceDays > 0)
+    {
+        <article class="metric-card warning-metric">
+            <span>휴가 가불</span>
+            <strong>@Model.OutstandingAdvanceDays</strong>
+            <small>일 · 월차 @(Model.OutstandingMonthlyAdvanceDays)일 / 연차 @(Model.OutstandingAnnualAdvanceDays)일 차감 예정</small>
+        </article>
+    }
+    <article class="metric-card wide renewal-metric">
+        <span>다음 갱신</span>
+        <strong>@Model.NextRenewalLabel</strong>
+        <small class="d-day">@Model.NextRenewalDday</small>
+    </article>
+</div>
+
+@if (!Model.IsAdminPreview && Model.BirthdayLeave.IsAvailable)
+{
+    <section class="cw-callout birthday-leave-summary" data-tone="info" role="note">
+        <strong>@Model.BirthdayLeave.Title</strong>
+        <p>@Model.BirthdayLeave.Message</p>
+    </section>
+    <p class="birthday-leave-summary-action"><button type="button" class="cw-button" data-variant="primary" id="openBirthdayApply">🎂 생일연차 신청하기</button></p>
+}
+
+@if (!Model.IsAdminPreview)
+{
+<section class="panel apply-panel @(Model.ShowApplyPanel ? "" : "is-hidden")" id="applyPanel">
+    <div class="panel-head">
+        <div>
+            <h2>연차 신청</h2>
+            <p>신청 버튼을 누른 뒤 월간 달력의 날짜를 선택하세요. 날짜는 직접 입력할 수도 있습니다. 연차·기타는 범위 선택, 반차·생일연차는 하루만 선택됩니다.</p>
+        </div>
+    </div>
+    @if (Model.Balance.Available <= 0)
+    {
+        <div class="advance-warning" id="noBalanceWarning">
+            현재 남은 연차가 없습니다. 부족분은 <b>월차/연차 가불</b>로 신청되며, 0년차는 앞으로 발생할 월차를 먼저 차감하고 초과분은 1년차 연차에서 차감됩니다.
+        </div>
+    }
+    <div class="advance-warning is-hidden" id="advanceWarningBox">
+        선택한 신청 일수가 현재 남은 연차보다 큽니다. 부족분은 <b>월차/연차 가불</b>로 기록되고 관리자 화면에도 가불 신청으로 표시됩니다.
+    </div>
+    <form method="post" asp-antiforgery="true" asp-page-handler="Apply" class="cw-form-fields apply-form" id="applyForm"
+          data-birthday-month-day="@(Model.Employee.BirthDate?.ToString("MM-dd") ?? "")"
+          data-hire-date="@Model.Employee.HireDate.ToString("yyyy-MM-dd")"
+          data-active-birthday-benefits="@string.Join(',', Model.BirthdayLeave.ActiveBenefitDates.Select(x => x.ToString("yyyy-MM-dd")))">
+        <input type="hidden" name="expectedEmployeeId" value="@Model.CurrentEmployee.Id" />
+        <input type="hidden" name="ViewEmployeeId" value="@Model.ViewEmployeeId" />
+        <input type="hidden" name="SelfOnly" value="@Model.SelfOnly.ToString().ToLowerInvariant()" />
+        <input type="hidden" name="ShowOthers" value="@Model.ShowOthers.ToString().ToLowerInvariant()" />
+        <input type="hidden" name="RequestLimit" value="@Model.RequestLimit" />
+        <label class="cw-form-field">시작일
+            <input class="cw-form-control" asp-for="Input.StartDate" type="date" id="applyStart" />
+        </label>
+        <label class="cw-form-field">종료일
+            <input class="cw-form-control" asp-for="Input.EndDate" type="date" id="applyEnd" />
+        </label>
+        <label class="cw-form-field">유형
+            <select class="cw-form-control" asp-for="Input.Portion" id="applyPortion">
+                <option value="FullDay">연차</option>
+                <option value="Morning">오전반차</option>
+                <option value="Afternoon">오후반차</option>
+                <option value="기타">기타 (연차 미차감)</option>
+                <option value="Birthday">🎂 생일연차 (1일·연차 미차감)</option>
+            </select>
+        </label>
+        <section class="cw-callout cw-form-wide birthday-leave-form-status" data-tone="info" role="note" data-birthday-status hidden>
+            <strong data-birthday-title>@Model.BirthdayLeave.Title</strong>
+            <p data-birthday-message>@Model.BirthdayLeave.Message</p>
+        </section>
+        <label class="cw-form-field">사유(선택)
+            <textarea class="cw-form-control" asp-for="Input.Reason" rows="3" placeholder="필요 시 입력"></textarea>
+        </label>
+        <label class="cw-form-field cw-form-wide apply-wide">업무 일정 및 인수인계 기록(필수)
+            <textarea class="cw-form-control" asp-for="Input.WorkPlan" rows="4" maxlength="2000" required placeholder="예: 오늘 처리 예정 업무, 연차 사용 시 문제 여부, 대신 처리할 직원/인수인계 내용 등을 입력"></textarea>
+            <small class="field-help">관리자가 승인 전에 확인할 업무 공백/분담 기록입니다.</small>
+        </label>
+        <div class="apply-actions">
+            <button type="submit" class="cw-button" data-variant="primary" disabled="@Model.ApplicationLocked">신청하기</button>
+            <button type="button" class="cw-button" id="cancelApplyPanel">닫기</button>
+        </div>
+    </form>
+    <div data-application-state data-application-locked="@Model.ApplicationLocked.ToString().ToLowerInvariant()" hidden></div>
+    <p><a asp-page="/Leave/Index" target="_blank" rel="noopener" data-application-recheck>새 탭에서 현재 신청 내역 확인</a></p>
+    @if (Model.ApplicationRawDraft is not null) { <pre class="application-raw-draft">@Model.ApplicationRawDraft</pre> }
+</section>
+}
+
+<section data-leave-self-screen data-self-locked="@Model.SelfActionLocked.ToString().ToLowerInvariant()">
+    <div data-leave-self-state hidden></div>
+    <p data-leave-self-recheck hidden><a asp-page="/Leave/Index" target="_blank" rel="noopener">새 탭에서 현재 신청 내역 확인</a></p>
+</section>
+
+@if (Model.CanManageExternalSchedules)
+{
+    <section data-leave-external-screen>
+        <div data-leave-external-state hidden></div>
+        <p data-leave-external-recheck hidden><a asp-page="/Leave/Index" target="_blank" rel="noopener">새 탭에서 현재 외부 일정 확인</a></p>
+    </section>
+}
+@if (Model.CanAdminEditCalendar)
+{
+    <section data-leave-admin-screen>
+        <div data-leave-admin-state hidden></div>
+        <p data-leave-admin-recheck hidden><a asp-page="/Leave/Index" target="_blank" rel="noopener">새 탭에서 현재 관리자 연차 내역 확인</a></p>
+        <div data-leave-admin-draft hidden>
+            <span>작성 중인 강제 삭제 사유가 있습니다.</span>
+            <button type="button" class="cw-button" data-size="compact" data-force-resume>삭제 사유 이어쓰기</button>
+            <button type="button" class="cw-button" data-size="compact" data-force-discard>삭제 초안 버리기</button>
+        </div>
+    </section>
+}
+<div id="calendarArea" data-calendar-view="@Model.CalendarView" data-read-owner="@Model.CurrentEmployee.Id">
+<section class="panel calendar-panel unified-calendar-panel">
+    <div class="panel-head calendar-main-head">
+        <div class="calendar-title-block">
+            <h2>@(Model.IsYearView ? $"{Model.Employee.Name} 님의 {Model.Year}년 연차" : $"{Model.Year}.{Model.Month:00} {(Model.CurrentEmployee.IsAdmin ? "연차·외부 일정 달력" : "연차 달력")}")</h2>
+            <p>@(Model.IsYearView ? "12개월 연차와 일정 페이지의 주요일정을 한 화면에서 확인합니다." : Model.CurrentEmployee.IsAdmin ? "연차 신청, 일정 페이지의 주요일정과 관리자 전용 외근·외부 일정을 함께 표시합니다." : "연차 신청·갱신일과 일정 페이지의 주요일정을 함께 표시합니다.")</p>
+            <nav class="calendar-view-switch" aria-label="달력 보기 방식">
+                <a class="btn calendar-view-button @(Model.IsYearView ? "btn-secondary" : "btn-primary is-active")"
+                   data-calendar-view-link="true" asp-page="Index"
+                   asp-route-CalendarView="month" asp-route-Year="@today.Year" asp-route-Month="@today.Month"
+                   asp-route-ViewEmployeeId="@Model.ViewEmployeeId" asp-route-RequestLimit="@Model.RequestLimit"
+                   asp-route-SelfOnly="@Model.SelfOnly" asp-route-ShowOthers="@Model.ShowOthers">월간 보기</a>
+                <a class="btn calendar-view-button @(Model.IsYearView ? "btn-primary is-active" : "btn-secondary")"
+                   data-calendar-view-link="true" asp-page="Index"
+                   asp-route-CalendarView="year" asp-route-Year="@Model.Year" asp-route-Month="@Model.Month"
+                   asp-route-ViewEmployeeId="@Model.ViewEmployeeId" asp-route-RequestLimit="@Model.RequestLimit"
+                   asp-route-SelfOnly="@Model.SelfOnly" asp-route-ShowOthers="@Model.ShowOthers">연간 보기</a>
+            </nav>
+        </div>
+        <form method="get" class="calendar-toolbar @(Model.IsYearView ? "year-mode-toolbar" : "month-mode-toolbar")" id="calendarMoveForm">
+            <input type="hidden" name="CalendarView" value="@Model.CalendarView" />
+            <input type="hidden" name="ViewEmployeeId" value="@Model.ViewEmployeeId" />
+            <input type="hidden" name="RequestLimit" value="@Model.RequestLimit" />
+            <input type="hidden" name="SaveCalendarPreference" value="true" />
+            @if (Model.IsYearView)
+            {
+                <a class="btn btn-secondary" asp-page="Index" asp-route-CalendarView="year" asp-route-Year="@(Model.Year - 1)" asp-route-Month="@Model.Month" asp-route-SelfOnly="@Model.SelfOnly" asp-route-ShowOthers="@Model.ShowOthers" asp-route-ViewEmployeeId="@Model.ViewEmployeeId" asp-route-RequestLimit="@Model.RequestLimit">이전 연도</a>
+                <input class="cw-form-control" type="number" name="Year" value="@Model.Year" min="2000" max="2100" aria-label="연도" />
+                <input type="hidden" name="Month" value="@Model.Month" />
+                @if (Model.CurrentEmployee.IsAdmin && !Model.IsAdminPreview)
+                {
+                    <label class="calendar-self-toggle cw-check-control"><input class="cw-checkbox" type="checkbox" name="SelfOnly" value="true" data-calendar-preference-toggle="true" aria-label="자기것만 보기" @(Model.SelfOnly ? "checked" : "") /> 자기것만 보기<input type="hidden" name="SelfOnly" value="false" /></label>
+                }
+                else if (!Model.CurrentEmployee.IsAdmin)
+                {
+                    <label class="calendar-self-toggle calendar-show-others-toggle cw-check-control"><input class="cw-checkbox" type="checkbox" name="ShowOthers" value="true" data-calendar-preference-toggle="true" aria-label="다른 사람 연차도 같이 보기" @(Model.ShowOthers ? "checked" : "") /> 다른 사람 연차도 같이 보기<input type="hidden" name="ShowOthers" value="false" /></label>
+                }
+                <a class="btn btn-secondary" asp-page="Index" asp-route-CalendarView="year" asp-route-Year="@(Model.Year + 1)" asp-route-Month="@Model.Month" asp-route-SelfOnly="@Model.SelfOnly" asp-route-ShowOthers="@Model.ShowOthers" asp-route-ViewEmployeeId="@Model.ViewEmployeeId" asp-route-RequestLimit="@Model.RequestLimit">다음 연도</a>
+                <a class="btn btn-secondary" asp-page="Index" asp-route-CalendarView="year" asp-route-Year="@today.Year" asp-route-Month="@today.Month" asp-route-SelfOnly="@Model.SelfOnly" asp-route-ShowOthers="@Model.ShowOthers" asp-route-ViewEmployeeId="@Model.ViewEmployeeId" asp-route-RequestLimit="@Model.RequestLimit">올해</a>
+            }
+            else
+            {
+                <a class="btn btn-secondary" asp-page="Index" asp-route-CalendarView="month" asp-route-Year="@prevMonth.Year" asp-route-Month="@prevMonth.Month" asp-route-SelfOnly="@Model.SelfOnly" asp-route-ShowOthers="@Model.ShowOthers" asp-route-ViewEmployeeId="@Model.ViewEmployeeId" asp-route-RequestLimit="@Model.RequestLimit">이전 달</a>
+                <input class="cw-form-control" type="number" name="Year" value="@Model.Year" min="2000" max="2100" aria-label="연도" />
+                <select class="cw-form-control" name="Month" aria-label="월">
+                    @for (var m = 1; m <= 12; m++)
+                    {
+                        if (m == Model.Month) { <option value="@m" selected>@m 월</option> }
+                        else { <option value="@m">@m 월</option> }
+                    }
+                </select>
+                @if (Model.CurrentEmployee.IsAdmin && !Model.IsAdminPreview)
+                {
+                    <label class="calendar-self-toggle cw-check-control"><input class="cw-checkbox" type="checkbox" name="SelfOnly" value="true" data-calendar-preference-toggle="true" aria-label="자기것만 보기" @(Model.SelfOnly ? "checked" : "") /> 자기것만 보기<input type="hidden" name="SelfOnly" value="false" /></label>
+                }
+                else if (!Model.CurrentEmployee.IsAdmin)
+                {
+                    <label class="calendar-self-toggle calendar-show-others-toggle cw-check-control"><input class="cw-checkbox" type="checkbox" name="ShowOthers" value="true" data-calendar-preference-toggle="true" aria-label="다른 사람 연차도 같이 보기" @(Model.ShowOthers ? "checked" : "") /> 다른 사람 연차도 같이 보기<input type="hidden" name="ShowOthers" value="false" /></label>
+                }
+                <a class="btn btn-secondary" asp-page="Index" asp-route-CalendarView="month" asp-route-Year="@nextMonth.Year" asp-route-Month="@nextMonth.Month" asp-route-SelfOnly="@Model.SelfOnly" asp-route-ShowOthers="@Model.ShowOthers" asp-route-ViewEmployeeId="@Model.ViewEmployeeId" asp-route-RequestLimit="@Model.RequestLimit">다음 달</a>
+                <a class="btn btn-secondary" asp-page="Index" asp-route-CalendarView="month" asp-route-Year="@today.Year" asp-route-Month="@today.Month" asp-route-SelfOnly="@Model.SelfOnly" asp-route-ShowOthers="@Model.ShowOthers" asp-route-ViewEmployeeId="@Model.ViewEmployeeId" asp-route-RequestLimit="@Model.RequestLimit">오늘</a>
+            }
+        </form>
+    </div>
+
+    @if (!Model.ScheduleMilestonesAvailable)
+    {
+        <div class="calendar-source-status"><span class="cw-state-pill" data-tone="warning">일정 페이지의 주요일정을 불러오지 못했습니다.</span></div>
+    }
+
+    @if (Model.IsYearView)
+    {
+        <div class="year-calendar-content">
+            <div class="year-summary-grid">
+                <article class="metric-card accent">
+                    <span>@Model.Year 년 사용</span>
+                    <strong>@Model.FormatDays(Model.CalendarYearUsedDays)</strong>
+                    <small>일</small>
+                </article>
+                <article class="metric-card">
+                    <span>@Model.Year 년 승인 대기</span>
+                    <strong>@Model.FormatDays(Model.CalendarYearPendingDays)</strong>
+                    <small>일</small>
+                </article>
+                <article class="metric-card year-scope-card">
+                    <span>달력 표시 범위</span>
+                    <strong>@(Model.IsAdminPreview || Model.SelfOnly ? "선택 직원" : (Model.ShowOthers || Model.CurrentEmployee.IsAdmin ? "여러 직원" : "본인"))</strong>
+                    <small>월간 달력의 표시 설정을 그대로 사용합니다.</small>
+                </article>
+            </div>
+
+            <section class="year-legend" aria-label="달력 범례">
+                <span><i class="year-legend-mark approved"></i> 승인</span>
+                <span><i class="year-legend-mark pending"></i> 승인 대기</span>
+                <span><i class="year-legend-mark cancel"></i> 취소 승인 대기</span>
+                <span><i class="year-legend-mark holiday"></i> 공휴일</span>
+                <span><i class="year-legend-mark birthday"></i> 생일</span>
+                <span><i class="year-legend-mark milestone"></i> 주요일정</span>
+                @if (Model.CurrentEmployee.IsAdmin)
+                {
+                    <span><i class="year-legend-mark external"></i> 외부 일정</span>
+                }
+            </section>
+
+            <div class="year-calendar-grid">
+            @foreach (var month in Model.YearCalendarMonths)
+            {
+                <section class="year-month-card @(Model.Year == today.Year && month.Month == today.Month ? "is-current-month" : "")">
+                    <header class="year-month-head">
+                        <a data-calendar-view-link="true" asp-page="Index" asp-route-CalendarView="month" asp-route-Year="@Model.Year" asp-route-Month="@month.Month"
+                           asp-route-SelfOnly="@Model.SelfOnly" asp-route-ShowOthers="@Model.ShowOthers" asp-route-ViewEmployeeId="@Model.ViewEmployeeId" asp-route-RequestLimit="@Model.RequestLimit">@month.Month 월</a>
+                        <div class="year-month-usage">
+                            <strong>사용 @Model.FormatDays(month.UsedDays)일</strong>
+                            @if (month.PendingDays > 0)
+                            {
+                                <span>대기 @Model.FormatDays(month.PendingDays)일</span>
+                            }
+                        </div>
+                    </header>
+                    <table class="cw-calendar-table year-mini-calendar" data-calendar-layout="year-mini" role="table" aria-label="@($"{Model.Year}년 {month.Month}월 연차 달력")">
+                        <thead>
+                            <tr>
+                            @foreach (var dayName in week)
+                            {
+                                <th scope="col" class="@(dayName == "일" ? "sun" : dayName == "토" ? "sat" : "")">@dayName</th>
+                            }
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var calendarWeek in month.Weeks)
+                        {
+                            <tr>
+                            @foreach (var day in calendarWeek)
+                            {
+                                if (day is null)
+                                {
+                                    <td class="is-empty"></td>
+                                }
+                                else
+                                {
+                                    var dayClasses = string.Join(" ", new[]
+                                    {
+                                        day.IsToday ? "is-today" : "",
+                                        day.Date.DayOfWeek == DayOfWeek.Sunday ? "is-sunday" : "",
+                                        day.Date.DayOfWeek == DayOfWeek.Saturday ? "is-saturday" : "",
+                                        day.HolidayNames.Count > 0 ? "is-holiday" : ""
+                                    }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                                    var holidayTitle = day.HolidayNames.Count > 0 ? string.Join(", ", day.HolidayNames) : null;
+                                    <td class="@dayClasses">
+                                        <a class="year-day-link" data-calendar-view-link="true" asp-page="Index" asp-route-CalendarView="month" asp-route-Year="@Model.Year" asp-route-Month="@month.Month"
+                                           asp-route-SelfOnly="@Model.SelfOnly" asp-route-ShowOthers="@Model.ShowOthers" asp-route-ViewEmployeeId="@Model.ViewEmployeeId" asp-route-RequestLimit="@Model.RequestLimit" title="@holidayTitle">
+                                            <span class="year-day-number">@day.Date.Day</span>
+                                            @if (day.HolidayNames.Count > 0)
+                                            {
+                                                <span class="year-holiday-name">@day.HolidayNames[0]</span>
+                                            }
+                                            <span class="year-day-events">
+                                            @{ var milestonePreview = day.ScheduleMilestones.Take(1).ToList(); var externalPreview = day.ExternalSchedules.Take(Math.Min(1, Math.Max(0, 3 - milestonePreview.Count))).ToList(); var birthdayPreview = day.Birthdays.Take(Math.Min(1, Math.Max(0, 3 - milestonePreview.Count - externalPreview.Count))).ToList(); var leavePreviewCount = Math.Max(0, 3 - milestonePreview.Count - externalPreview.Count - birthdayPreview.Count); }
+                                            @foreach (var milestone in milestonePreview)
+                                            {
+                                                <span class="year-event milestone" title="@milestone.Title · @milestone.TypeLabel@(string.IsNullOrWhiteSpace(milestone.ProjectName) ? "" : $" · {milestone.ProjectName}")"><span class="milestone-icon" aria-hidden="true">📌</span>@if (!string.IsNullOrWhiteSpace(milestone.ProjectId) && !string.IsNullOrWhiteSpace(milestone.ProjectName)) { <span class="cw-entity-avatar milestone-project-icon" aria-hidden="true" data-company-project="@milestone.ProjectId">@System.Globalization.StringInfo.GetNextTextElement(milestone.ProjectName)</span> }<span class="year-event-title">@milestone.Title</span></span>
+                                            }
+                                            @foreach (var schedule in externalPreview)
+                                            {
+                                                <span class="year-event external" title="@schedule.EmployeeName · @schedule.Category · @schedule.Memo"><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="@schedule.EmployeeId">@System.Globalization.StringInfo.GetNextTextElement(schedule.EmployeeName)</span>@schedule.EmployeeName</span>
+                                            }
+                                            @foreach (var birthday in birthdayPreview)
+                                            {
+                                                <span class="year-event birthday @(birthday.IsSelf ? "self" : "other")" data-detail="생일" data-employee-id="@birthday.EmployeeId" title="@birthday.Label"><span class="birthday-icon" aria-hidden="true">🎂</span><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="@birthday.EmployeeId">@System.Globalization.StringInfo.GetNextTextElement(birthday.EmployeeName)</span>@birthday.EmployeeName 생일</span>
+                                            }
+                                            @foreach (var item in day.Items.Take(leavePreviewCount))
+                                            {
+                                                <span class="year-event @Model.StatusClass(item.Status) @(item.IsSelf ? "self" : "other")"
+                                                      title="@item.EmployeeName · @Model.PortionName(item.Portion) · @Model.StatusName(item.Status)"><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="@item.EmployeeId">@System.Globalization.StringInfo.GetNextTextElement(item.EmployeeName)</span>@item.EmployeeName</span>
+                                            }
+                                            @if (day.Items.Count + day.ExternalSchedules.Count + day.Birthdays.Count + day.ScheduleMilestones.Count > 3)
+                                            {
+                                                <span class="year-event-more">+@(day.Items.Count + day.ExternalSchedules.Count + day.Birthdays.Count + day.ScheduleMilestones.Count - 3)</span>
+                                            }
+                                            </span>
+                                        </a>
+                                    </td>
+                                }
+                            }
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </section>
+            }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="calendar-shell">
+            <table class="cw-calendar-table month-calendar selectable-calendar" data-calendar-layout="month" role="table" aria-label="@($"{Model.Year}년 {Model.Month}월 연차 달력")" id="leaveCalendar">
+                <thead>
+                    <tr>
+                        @foreach (var w in week)
+                        {
+                            <th scope="col" class="@(w == "일" ? "sun" : w == "토" ? "sat" : "")">@w</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.CalendarWeeks)
+                    {
+                        <tr>
+                            @foreach (var day in row.Days)
+                            {
+                                var classes = string.Join(" ", new[] {
+                                    day.IsCurrentMonth ? "" : "is-outside",
+                                    day.IsToday ? "is-today" : "",
+                                    day.Date.DayOfWeek == DayOfWeek.Sunday ? "is-sunday" : "",
+                                    day.Date.DayOfWeek == DayOfWeek.Saturday ? "is-saturday" : "",
+                                    day.IsHoliday ? "is-holiday" : "",
+                                    "selectable-day"
+                                }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                                <td class="@classes" data-date="@day.Date.ToString("yyyy-MM-dd")" data-date-label="@day.Date.ToString("yyyy.MM.dd")">
+                                    <div class="day-head">
+                                        <button type="button" class="cw-button" data-variant="quiet" data-size="compact" data-layout="icon" data-day-detail-trigger aria-label="@day.Date.ToString("yyyy.MM.dd") 날짜 선택"><span class="day-number @(day.IsHoliday ? "holiday-number" : "")">@day.Date.Day</span></button>
+                                        @if (day.IsToday) { <span class="today-chip">오늘</span> }
+                                    </div>
+                                    <div class="day-events">
+                                        @foreach (var holiday in day.Holidays)
+                                        {
+                                            <div class="event-chip holiday" data-detail="공휴일" data-detail-label="@holiday.Name">@holiday.Name</div>
+                                        }
+                                        @foreach (var milestone in day.ScheduleMilestones)
+                                        {
+                                            <div class="event-chip milestone" data-detail="주요일정" data-milestone-id="@milestone.MilestoneId" data-occurrence-index="@milestone.OccurrenceIndex" data-milestone-title="@milestone.Title" data-milestone-type="@milestone.TypeLabel" data-project-id="@milestone.ProjectId" data-project-name="@milestone.ProjectName">
+                                                <strong><span class="milestone-icon" aria-hidden="true">📌</span>@if (!string.IsNullOrWhiteSpace(milestone.ProjectId) && !string.IsNullOrWhiteSpace(milestone.ProjectName)) { <span class="cw-entity-avatar milestone-project-icon" aria-hidden="true" data-company-project="@milestone.ProjectId">@System.Globalization.StringInfo.GetNextTextElement(milestone.ProjectName)</span> }@milestone.Title</strong>
+                                                <span>@milestone.TypeLabel@(string.IsNullOrWhiteSpace(milestone.ProjectName) ? "" : $" · {milestone.ProjectName}")</span>
+                                            </div>
+                                        }
+                                        @foreach (var renewal in day.Renewals)
+                                        {
+                                            <div class="event-chip renewal @(renewal.IsSelf ? "self-renewal" : "other-renewal") @(renewal.Kind == "월차" ? "monthly-renewal" : "annual-renewal")" data-detail="갱신" data-detail-label="@renewal.Label" data-employee-id="@renewal.EmployeeId" data-employee-name="@renewal.EmployeeName">
+                                                <strong><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="@renewal.EmployeeId">@System.Globalization.StringInfo.GetNextTextElement(renewal.EmployeeName)</span>@renewal.EmployeeName</strong>
+                                                <span>@renewal.Kind 갱신</span>
+                                            </div>
+                                        }
+                                        @foreach (var birthday in day.Birthdays)
+                                        {
+                                            <div class="event-chip birthday @(birthday.IsSelf ? "self-birthday" : "other-birthday")" data-detail="생일" data-detail-label="@birthday.Label" data-employee-id="@birthday.EmployeeId" data-employee-name="@birthday.EmployeeName">
+                                                <strong><span class="birthday-icon" aria-hidden="true">🎂</span><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="@birthday.EmployeeId">@System.Globalization.StringInfo.GetNextTextElement(birthday.EmployeeName)</span>@birthday.EmployeeName</strong>
+                                                <span>생일</span>
+                                            </div>
+                                        }
+                                        @foreach (var schedule in day.ExternalSchedules)
+                                        {
+                                            <div class="event-chip external-schedule" data-detail="외부일정" data-schedule-id="@schedule.Id" data-snapshot="@schedule.Snapshot" data-employee-id="@schedule.EmployeeId" data-employee-name="@schedule.EmployeeName" data-category="@schedule.Category" data-start-date="@schedule.StartDate.ToString("yyyy-MM-dd")" data-end-date="@schedule.EndDate.ToString("yyyy-MM-dd")" data-memo="@schedule.Memo">
+                                                <strong><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="@schedule.EmployeeId">@System.Globalization.StringInfo.GetNextTextElement(schedule.EmployeeName)</span>@schedule.EmployeeName</strong>
+                                                <span>@schedule.Category · @schedule.Memo</span>
+                                            </div>
+                                        }
+                                        @foreach (var item in day.Items)
+                                        {
+                                            <div class="event-chip leave @Model.StatusClass(item.Status) @(item.IsAdvance ? "advance" : "")" data-detail="신청" data-request-id="@item.RequestId" data-employee-id="@item.EmployeeId" data-employee-name="@item.EmployeeName" data-portion-name="@Model.PortionName(item.Portion)" data-status-name="@Model.StatusName(item.Status)" data-status-code="@item.Status" data-can-self-cancel="@item.CanSelfCancel.ToString().ToLowerInvariant()" data-is-advance="@item.IsAdvance.ToString().ToLowerInvariant()" data-advance-days="@item.AdvanceDays" data-reason="@item.Reason" data-work-plan="@item.WorkPlan" data-advance-label="@item.AdvanceLabel" data-request-snapshot="@item.Snapshot" data-request-dates="@item.DateLabel" data-admin-target="@(Model.CanAdminEditCalendar ? item.AdminTarget : null)">
+                                                <strong><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="@item.EmployeeId">@System.Globalization.StringInfo.GetNextTextElement(item.EmployeeName)</span>@item.EmployeeName</strong>
+                                                <span>@Model.PortionName(item.Portion) · @Model.StatusName(item.Status)@(item.IsAdvance ? $" · {item.AdvanceLabel}" : "")</span>
+                                            </div>
+                                        }
+                                    </div>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@if (!Model.IsYearView)
+{
+<dialog class="cw-modal day-detail-modal" id="dayDetailModal" aria-labelledby="dayDetailTitle">
+        <div class="day-detail-head">
+            <h2 id="dayDetailTitle" tabindex="-1">날짜 상세</h2>
+            <button type="button" class="cw-button" data-close-day-detail="true">닫기</button>
+        </div>
+        <div id="dayDetailBody" class="day-detail-body"></div>
+        @if (!Model.IsAdminPreview)
+        {
+            <div class="day-detail-actions" id="dayDetailActions">
+                <button type="button" class="cw-button" data-variant="primary" id="detailApplyButton">이 날짜에 연차 신청</button>
+            </div>
+            @await Html.PartialAsync("_SelfActionForm", new LeaveManager.Pages.Leave.SelfActionFormModel(Model, "Cancel"))
+            @await Html.PartialAsync("_SelfActionForm", new LeaveManager.Pages.Leave.SelfActionFormModel(Model, "WithdrawCancel"))
+        }
+        @if (Model.CanAdminEditCalendar)
+        {
+            <form method="post" asp-antiforgery="true" asp-page-handler="AdminForceAdd" class="day-admin-force-form" id="adminForceAddForm" data-reason-required="@Model.ForceReasonRequired.ToString().ToLowerInvariant()">
+                <input type="hidden" name="expectedEmployeeId" value="@Model.CurrentEmployee.Id" />
+                <input type="hidden" name="expectedSnapshot" value="" />
+                <input type="hidden" name="Year" value="@Model.Year" />
+                <input type="hidden" name="Month" value="@Model.Month" />
+                <input type="hidden" name="CalendarView" value="month" />
+                <input type="hidden" name="RequestLimit" value="@Model.RequestLimit" />
+                <input type="hidden" name="SelfOnly" value="@(Model.SelfOnly ? "true" : "false")" />
+                <input type="hidden" name="ShowOthers" value="@(Model.ShowOthers ? "true" : "false")" />
+                <input type="hidden" name="ViewEmployeeId" value="@Model.ViewEmployeeId" />
+                <input type="hidden" name="RequestPage" value="@Model.RequestPage" />
+                <div class="force-form-heading"><div class="force-form-title">관리자 강제 추가</div><button type="button" class="cw-button" data-size="compact" data-force-reset>추가 초안 초기화</button></div>
+                <div class="cw-form-fields force-form-grid">
+                    <label class="cw-form-field">추가할 날짜 <input class="cw-form-control" asp-for="ForceInput.Date" id="adminForceDate" type="date" required /></label>
+                    <label class="cw-form-field">직원
+                        <select class="cw-form-control" asp-for="ForceInput.EmployeeId" data-company-picker="employee" data-company-local="true">
+                            @foreach (var e in Model.ViewableEmployees)
+                            {
+                                <option value="@e.Id">@e.Name (@e.Email)</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="cw-form-field">유형
+                        <select class="cw-form-control" asp-for="ForceInput.Portion">
+                            <option value="FullDay">연차</option>
+                            <option value="Morning">오전반차</option>
+                            <option value="Afternoon">오후반차</option>
+                            <option value="기타">기타 (연차 미차감)</option>
+                            <option value="Birthday">🎂 생일연차 (연차 미차감)</option>
+                        </select>
+                    </label>
+                    <label class="cw-form-field cw-form-wide force-reason">사유
+                        <input class="cw-form-control" asp-for="ForceInput.Reason" placeholder="예: 누락 기록 추가" required="@Model.ForceReasonRequired" />
+                    </label>
+                    <button type="submit" class="cw-button" data-variant="primary">이 날짜에 강제 추가</button>
+                </div>
+                <p class="force-form-note">관리자는 지난 날짜도 추가할 수 있습니다. 추가된 내역은 승인 완료 상태로 기록됩니다.</p>
+            </form>
+            <form method="post" asp-antiforgery="true" asp-page-handler="AdminForceDelete" id="adminForceDeleteForm" class="is-hidden" data-reason-required="@Model.ForceReasonRequired.ToString().ToLowerInvariant()">
+                <input type="hidden" name="expectedEmployeeId" value="@Model.CurrentEmployee.Id" />
+                <input type="hidden" name="expectedSnapshot" value="" />
+                <input type="hidden" name="displayTarget" value="" />
+                <input type="hidden" name="RequestPage" value="@Model.RequestPage" />
+                <input type="hidden" name="Year" value="@Model.Year" />
+                <input type="hidden" name="Month" value="@Model.Month" />
+                <input type="hidden" name="CalendarView" value="month" />
+                <input type="hidden" name="RequestLimit" value="@Model.RequestLimit" />
+                <input type="hidden" name="SelfOnly" value="@(Model.SelfOnly ? "true" : "false")" />
+                <input type="hidden" name="ShowOthers" value="@(Model.ShowOthers ? "true" : "false")" />
+                <input type="hidden" name="ViewEmployeeId" value="@Model.ViewEmployeeId" />
+                <input type="hidden" name="ForceDeleteRequestId" id="forceDeleteRequestId" />
+                <input type="hidden" name="ForceDeleteReason" id="forceDeleteReason" />
+            </form>
+        }
+        @if (Model.CanManageExternalSchedules)
+        {
+            <form method="post" asp-antiforgery="true" asp-page-handler="ExternalScheduleSave" class="day-admin-external-form" id="externalScheduleForm">
+                <input type="hidden" name="expectedEmployeeId" value="@Model.CurrentEmployee.Id" />
+                <input type="hidden" name="expectedSnapshot" value="" />
+                <input type="hidden" name="Year" value="@Model.Year" />
+                <input type="hidden" name="Month" value="@Model.Month" />
+                <input type="hidden" name="CalendarView" value="month" />
+                <input type="hidden" name="RequestLimit" value="@Model.RequestLimit" />
+                <input type="hidden" name="RequestPage" value="@Model.RequestPage" />
+                <input type="hidden" name="SelfOnly" value="@(Model.SelfOnly ? "true" : "false")" />
+                <input type="hidden" name="ShowOthers" value="@(Model.ShowOthers ? "true" : "false")" />
+                <input type="hidden" name="ViewEmployeeId" value="@Model.ViewEmployeeId" />
+                <input type="hidden" asp-for="ExternalInput.Id" id="externalScheduleId" />
+                <div class="external-form-head">
+                    <div>
+                        <div class="force-form-title" id="externalScheduleFormTitle">외부 일정 추가</div>
+                        <p>연차 차감 없이 관리자에게만 표시됩니다.</p>
+                    </div>
+                    <button type="button" class="cw-button" data-size="compact" id="externalScheduleEditCancel">초안 초기화</button>
+                </div>
+                <div class="cw-form-fields external-calendar-form-grid">
+                    <label class="cw-form-field">직원
+                        <select class="cw-form-control" asp-for="ExternalInput.EmployeeId" id="externalScheduleEmployee" data-company-picker="employee" data-company-local="true" required>
+                            @foreach (var e in Model.ExternalScheduleEmployees)
+                            {
+                                <option value="@e.Id">@e.Name@(string.IsNullOrWhiteSpace(e.Department) ? "" : $" ({e.Department})")@(e.IsActive ? "" : " · 비활성")</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="cw-form-field">구분
+                        <select class="cw-form-control" asp-for="ExternalInput.Category" id="externalScheduleCategory">
+                            @foreach (var category in LeaveManager.Pages.Leave.IndexModel.ExternalScheduleCategories)
+                            {
+                                <option value="@category">@category</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="cw-form-field">시작일 <input class="cw-form-control" asp-for="ExternalInput.StartDate" id="externalScheduleStartDate" type="date" required /></label>
+                    <label class="cw-form-field">종료일 <input class="cw-form-control" asp-for="ExternalInput.EndDate" id="externalScheduleEndDate" type="date" required /></label>
+                    <label class="cw-form-field cw-form-wide external-calendar-memo">메모
+                        <textarea class="cw-form-control" asp-for="ExternalInput.Memo" id="externalScheduleMemo" maxlength="500" rows="3" placeholder="예: 판교 협력사 미팅, 14시 복귀 예정" required></textarea>
+                    </label>
+                    <button type="submit" class="cw-button" data-variant="primary" id="externalScheduleSubmit">외부 일정 추가</button>
+                </div>
+            </form>
+            <form method="post" asp-antiforgery="true" asp-page-handler="ExternalScheduleDelete" id="externalScheduleDeleteForm" class="is-hidden">
+                <input type="hidden" name="expectedEmployeeId" value="@Model.CurrentEmployee.Id" />
+                <input type="hidden" name="expectedSnapshot" value="" />
+                <input type="hidden" name="displayInput" value="" />
+                <input type="hidden" name="Year" value="@Model.Year" />
+                <input type="hidden" name="Month" value="@Model.Month" />
+                <input type="hidden" name="CalendarView" value="month" />
+                <input type="hidden" name="RequestLimit" value="@Model.RequestLimit" />
+                <input type="hidden" name="RequestPage" value="@Model.RequestPage" />
+                <input type="hidden" name="SelfOnly" value="@(Model.SelfOnly ? "true" : "false")" />
+                <input type="hidden" name="ShowOthers" value="@(Model.ShowOthers ? "true" : "false")" />
+                <input type="hidden" name="ViewEmployeeId" value="@Model.ViewEmployeeId" />
+                <input type="hidden" name="id" id="externalScheduleDeleteId" />
+            </form>
+        }
+</dialog>
+}
+</div>
+
+<section class="panel" id="leaveRequestsArea" data-read-owner="@Model.CurrentEmployee.Id">
+    <div class="panel-head list-panel-head">
+        <div>
+            <h2>@(Model.IsAdminPreview ? $"{Model.Employee.Name}님의 신청 내역" : "내 신청 내역")</h2>
+            <p class="list-summary">총 @(Model.RequestTotalCount)건 중 @(Model.RequestTotalCount == 0 ? 0 : ((Model.RequestPage - 1) * Model.RequestLimit) + 1)~@Math.Min(Model.RequestPage * Model.RequestLimit, Model.RequestTotalCount)건 표시</p>
+        </div>
+        <form method="get" class="compact-filter-form" id="leaveRequestListForm">
+            <input type="hidden" name="Year" value="@Model.Year" />
+            <input type="hidden" name="Month" value="@Model.Month" />
+            <input type="hidden" name="CalendarView" value="@Model.CalendarView" />
+            <input type="hidden" name="SelfOnly" value="@(Model.SelfOnly ? "true" : "false")" />
+            <input type="hidden" name="ShowOthers" value="@(Model.ShowOthers ? "true" : "false")" />
+            <input type="hidden" name="ViewEmployeeId" value="@Model.ViewEmployeeId" />
+            <input type="hidden" name="RequestPage" value="@Model.RequestPage" />
+            <label class="cw-form-field">표시 개수
+                <select class="cw-form-control" name="RequestLimit">
+                    @if (Model.RequestLimit == 10) { <option value="10" selected>10개</option> } else { <option value="10">10개</option> }
+                    @if (Model.RequestLimit == 20) { <option value="20" selected>20개</option> } else { <option value="20">20개</option> }
+                    @if (Model.RequestLimit == 50) { <option value="50" selected>50개</option> } else { <option value="50">50개</option> }
+                    @if (Model.RequestLimit == 100) { <option value="100" selected>100개</option> } else { <option value="100">100개</option> }
+                </select>
+            </label>
+            <noscript><button class="cw-button" data-size="compact">적용</button></noscript>
+        </form>
+    </div>
+    <div class="cw-table-scroll" tabindex="0" role="region" aria-label="목록 표">
+        <table class="cw-data-table leave-request-table" data-layout="cards" role="table">
+            <colgroup>
+                <col class="request-col-requested" />
+                <col class="request-col-use-date" />
+                <col class="request-col-reason" />
+                <col class="request-col-work-plan" />
+                <col class="request-col-days" />
+                <col class="request-col-status" />
+                <col class="request-col-action" />
+            </colgroup>
+            <thead><tr><th scope="col">신청일</th><th scope="col">사용일</th><th scope="col">신청 사유</th><th scope="col">업무 일정</th><th scope="col">일수</th><th scope="col">상태</th><th scope="col"></th></tr></thead>
+            <tbody>
+            @foreach (var r in Model.Requests)
+            {
+                <tr>
+                    <td class="request-date-cell" data-label="신청일"><div class="cw-table-value">@Model.Kst(r.RequestedAtUtc)</div></td>
+                    <td class="request-use-date-cell" data-label="사용일"><div class="cw-table-value">@string.Join(", ", r.Dates.OrderBy(x => x.Date).Select(x => $"{x.Date:yyyy-MM-dd} {Model.PortionName(x.Portion)}"))</div></td>
+                    <td data-label="신청 사유"><div class="cw-table-value"><div class="work-plan-preview">@(string.IsNullOrWhiteSpace(r.Reason) ? "-" : r.Reason)</div></div></td>
+                    <td data-label="업무 일정"><div class="cw-table-value"><div class="work-plan-preview">@(string.IsNullOrWhiteSpace(r.WorkPlan) ? "-" : r.WorkPlan)</div></div></td>
+                    <td class="request-days-cell" data-label="일수"><div class="cw-table-value">
+                        @r.CalculatedDays
+                        @if (r.IsAdvance)
+                        {
+                            <span class="advance-badge cw-state-pill" data-tone="warning">@Model.AdvanceBreakdownLabel(r)</span>
+                        }
+                    </div></td>
+                    <td class="request-status-cell" data-label="상태"><div class="cw-table-value">
+                        <div class="request-status-line">
+                            <span class="cw-state-pill" data-tone="@Model.StatusTone(r.Status)">@Model.StatusName(r.Status)</span>
+                            @if (r.Status == LeaveRequestStatus.Approved && r.Dates.Any(x => x.Date < today))
+                            {
+                                <span class="request-complete-label cw-state-pill" data-tone="neutral">사용 완료</span>
+                            }
+                        </div>
+                    </div></td>
+                    <td class="request-action-cell" data-label=""><div class="cw-table-value">
+                        @if (Model.CanRequestCancel(r))
+                        {
+                            @await Html.PartialAsync("_SelfActionForm", new LeaveManager.Pages.Leave.SelfActionFormModel(Model, "Cancel", r))
+                        }
+                        else if (!Model.IsAdminPreview && r.Status == LeaveRequestStatus.CancelRequested)
+                        {
+                            @await Html.PartialAsync("_SelfActionForm", new LeaveManager.Pages.Leave.SelfActionFormModel(Model, "WithdrawCancel", r))
+                        }
+                    </div></td>
+                </tr>
+            }
+            @if (Model.Requests.Count == 0)
+            {
+                <tr><td colspan="7" class="muted-text" data-label=""><div class="cw-table-value">표시할 신청 내역이 없습니다.</div></td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    @if (Model.RequestTotalPages > 1)
+    {
+        <nav class="pager" aria-label="신청 내역 페이지">
+            @{ var previousPage = Math.Max(1, Model.RequestPage - 1); var nextPage = Math.Min(Model.RequestTotalPages, Model.RequestPage + 1); }
+            <a class="btn btn-secondary small @(Model.RequestPage <= 1 ? "is-disabled" : "")" asp-page="Index" asp-route-Year="@Model.Year" asp-route-Month="@Model.Month" asp-route-CalendarView="@Model.CalendarView" asp-route-SelfOnly="@Model.SelfOnly" asp-route-ShowOthers="@Model.ShowOthers" asp-route-ViewEmployeeId="@Model.ViewEmployeeId" asp-route-RequestLimit="@Model.RequestLimit" asp-route-RequestPage="@previousPage">이전</a>
+            <span class="pager-status">@Model.RequestPage / @Model.RequestTotalPages</span>
+            <a class="btn btn-secondary small @(Model.RequestPage >= Model.RequestTotalPages ? "is-disabled" : "")" asp-page="Index" asp-route-Year="@Model.Year" asp-route-Month="@Model.Month" asp-route-CalendarView="@Model.CalendarView" asp-route-SelfOnly="@Model.SelfOnly" asp-route-ShowOthers="@Model.ShowOthers" asp-route-ViewEmployeeId="@Model.ViewEmployeeId" asp-route-RequestLimit="@Model.RequestLimit" asp-route-RequestPage="@nextPage">다음</a>
+            <form method="get" class="pager-jump-form" id="leaveRequestPageJumpForm">
+                <input type="hidden" name="Year" value="@Model.Year" />
+                <input type="hidden" name="Month" value="@Model.Month" />
+                <input type="hidden" name="CalendarView" value="@Model.CalendarView" />
+                <input type="hidden" name="SelfOnly" value="@(Model.SelfOnly ? "true" : "false")" />
+                <input type="hidden" name="ShowOthers" value="@(Model.ShowOthers ? "true" : "false")" />
+                <input type="hidden" name="ViewEmployeeId" value="@Model.ViewEmployeeId" />
+                <input type="hidden" name="RequestLimit" value="@Model.RequestLimit" />
+                <label class="pager-jump-label">페이지
+                    <input class="cw-form-control" type="number" name="RequestPage" min="1" max="@Model.RequestTotalPages" value="@Model.RequestPage" />
+                </label>
+                <button class="cw-button" data-size="compact">이동</button>
+            </form>
+        </nav>
+    }
+</section>
+
+@section Scripts {
+<script src="~/js/leave-application.js" asp-append-version="true"></script>
+<script src="~/js/leave-self-actions.js" asp-append-version="true"></script>
+<script src="~/js/leave-external-schedules.js" asp-append-version="true"></script>
+<script src="~/js/leave-calendar-admin.js" asp-append-version="true"></script>
+<script src="~/js/leave-dashboard-read.js" asp-append-version="true"></script>
+<script>
+(() => {
+    const applyPanel = document.getElementById('applyPanel');
+    const openBtn = document.getElementById('openApplyPanel');
+    const birthdayOpenBtn = document.getElementById('openBirthdayApply');
+    const closeBtn = document.getElementById('cancelApplyPanel');
+    const startInput = document.getElementById('applyStart');
+    const endInput = document.getElementById('applyEnd');
+    const portion = document.getElementById('applyPortion');
+    const todayValue = '@today.ToString("yyyy-MM-dd")';
+    const canApplyFromDetail = @((!Model.IsAdminPreview).ToString().ToLowerInvariant());
+    const canAdminEditCalendar = @(Model.CanAdminEditCalendar.ToString().ToLowerInvariant());
+    const canForceDelete = @(Model.CanForceDelete.ToString().ToLowerInvariant());
+    const canManageExternalSchedules = @(Model.CanManageExternalSchedules.ToString().ToLowerInvariant());
+    const currentEmployeeId = '@Model.CurrentEmployee.Id';
+    const defaultExternalScheduleEmployeeId = '@Model.Employee.Id';
+    const currentAvailableDays = Number('@(Model.Balance.Available.ToString(System.Globalization.CultureInfo.InvariantCulture))');
+    const birthdayStatus = document.querySelector('[data-birthday-status]');
+    const birthdayMonthDay = document.getElementById('applyForm')?.dataset.birthdayMonthDay || '';
+    const birthdayHireDate = document.getElementById('applyForm')?.dataset.hireDate || '';
+    const activeBirthdayBenefits = new Set((document.getElementById('applyForm')?.dataset.activeBirthdayBenefits || '').split(',').filter(Boolean));
+
+    let selecting = applyPanel ? !applyPanel.classList.contains('is-hidden') : false;
+    let completedRange = false;
+    const readSession = window.CompanyReadSession.create();
+    const viewAsForm = document.querySelector('.view-as-form');
+    const originalViewEmployeeId = viewAsForm?.elements.namedItem('ViewEmployeeId')?.value || '';
+    let calendarFetchSeq = 0, requestListFetchSeq = 0, preferencePending = false;
+    let detailLifetime = null, detailNode = null, detailDisposed = false;
+    // Domain-confirmed writes may hide the retained editor without destroying its forms.
+    window.LeaveDayDetail = { close: hideDayDetail };
+    const detailApi = window.LeaveDayDetail;
+    const detailObserver = new MutationObserver(() => {
+        if (detailNode && !detailNode.isConnected) hideDayDetail();
+    });
+    detailObserver.observe(document.body, {childList:true, subtree:true});
+    const cancelDashboardReads = () => {
+        calendarFetchSeq++; requestListFetchSeq++;
+        readSession.cancel('leave-calendar'); readSession.cancel('leave-request-list');
+        document.getElementById('calendarArea')?.classList.remove('is-loading');
+        document.getElementById('leaveRequestsArea')?.classList.remove('is-loading');
+    };
+    document.addEventListener('workspace-entity-scope-change', cancelDashboardReads);
+    const disposeDashboard = event => {
+        cancelDashboardReads();
+        if (event?.persisted || detailDisposed) return;
+        detailDisposed = true; readSession.dispose(); hideDayDetail(); detailObserver.disconnect();
+        document.removeEventListener('workspace-entity-scope-change', cancelDashboardReads);
+        document.removeEventListener('leave-calendar-preference-change', handleCalendarPreferenceChange);
+        document.removeEventListener('company-page-leave', disposeDashboard);
+        window.removeEventListener('pagehide', disposeDashboard);
+        if (window.LeaveDayDetail === detailApi) delete window.LeaveDayDetail;
+    };
+    window.addEventListener('pagehide', disposeDashboard);
+    document.addEventListener('company-page-leave', disposeDashboard);
+
+    function getCalendar() { return document.getElementById('leaveCalendar'); }
+
+    function showApply(resetDates = false) {
+        if (!applyPanel) return;
+        applyPanel.classList.remove('is-hidden');
+        selecting = true;
+        completedRange = false;
+        if (resetDates && document.getElementById('applyForm')?.dataset.applicationDirty !== 'true' && document.getElementById('applyForm')?.dataset.applicationLocked !== 'true') {
+            startInput.value = '';
+            endInput.value = '';
+            clearSelectionClasses();
+            startInput.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+            refreshSelectionClasses();
+        }
+        applyPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function hideApply() {
+        if (!applyPanel) return;
+        applyPanel.classList.add('is-hidden');
+        selecting = false;
+        clearSelectionClasses();
+    }
+
+    function normalizeDates() {
+        if (!startInput || !endInput || !portion) return;
+        if (document.getElementById('applyForm')?.dataset.applicationLocked === 'true') return;
+        let start = startInput.value;
+        let end = endInput.value || start;
+        if (!start) return;
+        if (end < start) end = start;
+        if (portion.value === 'Morning' || portion.value === 'Afternoon' || portion.value === 'Birthday') end = start;
+        startInput.value = start;
+        endInput.value = end;
+    }
+
+    function selectedLeaveDays() {
+        if (!startInput?.value) return 0;
+        if (portion?.value === '기타' || portion?.value === 'Birthday') return 0;
+        if (portion?.value === 'Morning' || portion?.value === 'Afternoon') return 0.5;
+        const start = startInput.value;
+        const end = endInput?.value || start;
+        const cells = Array.from(document.querySelectorAll('#leaveCalendar td[data-date]'));
+        const visibleBusinessDays = cells
+            .filter(td => td.dataset.date >= start && td.dataset.date <= end)
+            .filter(td => !td.classList.contains('is-saturday') && !td.classList.contains('is-sunday') && !td.classList.contains('is-holiday'))
+            .length;
+        return visibleBusinessDays > 0 ? visibleBusinessDays : 1;
+    }
+
+    function refreshAdvanceWarning() {
+        const box = document.getElementById('advanceWarningBox');
+        const required = selectedLeaveDays();
+        box?.classList.toggle('is-hidden', required <= currentAvailableDays);
+        document.getElementById('noBalanceWarning')?.classList.toggle('is-hidden', required === 0);
+    }
+
+    function setDates(start, end) {
+        if (!startInput || !endInput || !portion) return;
+        if (document.getElementById('applyForm')?.dataset.applicationLocked === 'true') return;
+        if (!end || end < start) end = start;
+        if (portion.value === 'Morning' || portion.value === 'Afternoon' || portion.value === 'Birthday') end = start;
+        startInput.value = start;
+        endInput.value = end;
+        startInput.dispatchEvent(new Event('input', { bubbles: true }));
+        refreshSelectionClasses();
+        refreshAdvanceWarning();
+    }
+
+    function clearSelectionClasses() {
+        getCalendar()?.querySelectorAll('td').forEach(td => td.classList.remove('is-selected-start', 'is-selected-end', 'is-in-selection'));
+    }
+
+    const parseDate = value => value ? new Date(value + 'T00:00:00Z') : null;
+    const ymd = date => date.toISOString().slice(0, 10);
+    function birthdayDate(year) {
+        if (!/^\d{2}-\d{2}$/.test(birthdayMonthDay)) return null;
+        let [month, day] = birthdayMonthDay.split('-').map(Number);
+        if (month === 2 && day === 29 && new Date(Date.UTC(year, 1, 29)).getUTCMonth() !== 1) day = 28;
+        return new Date(Date.UTC(year, month - 1, day));
+    }
+    function birthdayWindowFor(value) {
+        const selected = parseDate(value); if (!selected) return null;
+        const year = selected.getUTCFullYear();
+        return [year - 1, year, year + 1].map(birthdayDate).filter(Boolean).map(benefit => ({benefit, distance:Math.abs((selected-benefit)/86400000)})).filter(x => x.distance <= 30).sort((a,b)=>a.distance-b.distance)[0] || null;
+    }
+    function refreshBirthdayGuidance() {
+        if (!birthdayStatus || !portion || !endInput) return;
+        const selected = portion.value === 'Birthday';
+        birthdayStatus.hidden = !selected;
+        endInput.readOnly = selected;
+        endInput.setAttribute('aria-readonly', String(selected));
+        if (!selected) return;
+        if (startInput?.value) endInput.value = startInput.value;
+        const title = birthdayStatus.querySelector('[data-birthday-title]');
+        const message = birthdayStatus.querySelector('[data-birthday-message]');
+        if (!birthdayMonthDay) { title.textContent = '생일 정보가 필요합니다'; message.textContent = '포털 직원 정보에 생일 월·일을 먼저 등록해 주세요.'; return; }
+        if (!startInput?.value) { title.textContent = '생일 전후 30일 중 하루를 선택하세요'; message.textContent = '근무일 1일만 신청할 수 있고 일반 연차는 차감되지 않습니다.'; return; }
+        const window = birthdayWindowFor(startInput.value);
+        if (!window) { title.textContent = '선택한 날은 생일연차 기간 밖입니다'; message.textContent = '생일 당일 기준 전후 30일 안의 근무일을 선택해 주세요.'; return; }
+        const benefit = ymd(window.benefit);
+        if (birthdayHireDate && birthdayHireDate > benefit) { title.textContent = '이번 생일연차 대상이 아닙니다'; message.textContent = '해당 생일 후에 입사해 다음 생일부터 사용할 수 있습니다.'; return; }
+        if (activeBirthdayBenefits.has(benefit)) { title.textContent = '해당 생일연차를 이미 신청했습니다'; message.textContent = '반려되거나 취소가 완료되면 다시 신청할 수 있습니다.'; return; }
+        const start = new Date(window.benefit); start.setUTCDate(start.getUTCDate() - 30);
+        const end = new Date(window.benefit); end.setUTCDate(end.getUTCDate() + 30);
+        title.textContent = '🎂 선택한 날에 생일연차를 신청할 수 있어요';
+        message.textContent = ymd(start) + ' ~ ' + ymd(end) + ' 혜택입니다. 승인되어도 일반 연차는 차감되지 않습니다.';
+    }
+
+    function refreshSelectionClasses() {
+        const calendar = getCalendar();
+        if (!calendar || !startInput || !endInput) return;
+        normalizeDates();
+        clearSelectionClasses();
+        const start = startInput.value;
+        const end = endInput.value || start;
+        if (!start) return;
+        calendar.querySelectorAll('td[data-date]').forEach(td => {
+            const date = td.dataset.date;
+            if (date === start) td.classList.add('is-selected-start');
+            if (date === end) td.classList.add('is-selected-end');
+            if (date >= start && date <= end) td.classList.add('is-in-selection');
+        });
+        refreshAdvanceWarning();
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+    }
+
+    // Keep local identity separate from the label; the shared display maps it to a company profile.
+    function employeeHeading(id, name) {
+        const label = String(name ?? '');
+        return `<strong class="leave-detail-person"><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="${escapeHtml(id)}">${escapeHtml(Array.from(label.trim())[0] || '?')}</span><span class="leave-detail-person-name">${escapeHtml(label)}</span></strong>`;
+    }
+
+    function projectIdentity(id, name) {
+        const label = String(name ?? '');
+        if (!id || !label) return '';
+        return `<span class="milestone-project-identity"><span class="cw-entity-avatar milestone-project-icon" aria-hidden="true" data-company-project="${escapeHtml(id)}">${escapeHtml(Array.from(label.trim())[0] || 'P')}</span><span>${escapeHtml(label)}</span></span>`;
+    }
+
+    function resetExternalScheduleForm(date) {
+        window.LeaveExternalSchedule?.selectDate(date, defaultExternalScheduleEmployeeId);
+    }
+
+    function editExternalSchedule(button) {
+        window.LeaveExternalSchedule?.edit(button);
+    }
+
+    function showDayDetail(cell) {
+        if (detailDisposed || window.LeaveFormSession?.pending || window.LeaveFormSession?.invalid) return;
+        const detailModal = document.getElementById('dayDetailModal');
+        const detailTitle = document.getElementById('dayDetailTitle');
+        const detailBody = document.getElementById('dayDetailBody');
+        const detailApplyButton = document.getElementById('detailApplyButton');
+        if (!detailModal || !detailTitle || !detailBody) return;
+
+        const date = cell.dataset.date;
+        const dateLabel = cell.dataset.dateLabel || date;
+        detailTitle.textContent = `${dateLabel} 상세`;
+        detailModal.dataset.selectedDate = date;
+        const details = Array.from(cell.querySelectorAll('[data-detail]')).map(el => ({
+            kind: el.dataset.detail,
+            label: el.dataset.detailLabel || '',
+            requestId: el.dataset.requestId || '',
+            portionName: el.dataset.portionName || '',
+            statusName: el.dataset.statusName || '',
+            statusCode: el.dataset.statusCode || '',
+            canSelfCancel: el.dataset.canSelfCancel === 'true',
+            isAdvance: el.dataset.isAdvance === 'true',
+            advanceDays: el.dataset.advanceDays || '0',
+            reason: el.dataset.reason || '',
+            workPlan: el.dataset.workPlan || '',
+            advanceLabel: el.dataset.advanceLabel || '',
+            snapshot: el.dataset.requestSnapshot || '',
+            displayDates: el.dataset.requestDates || '',
+            adminTarget: el.dataset.adminTarget || '',
+            scheduleId: el.dataset.scheduleId || '',
+            scheduleSnapshot: el.dataset.snapshot || '',
+            employeeId: el.dataset.employeeId || '',
+            employeeName: el.dataset.employeeName || '',
+            category: el.dataset.category || '',
+            startDate: el.dataset.startDate || '',
+            endDate: el.dataset.endDate || '',
+            memo: el.dataset.memo || '',
+            milestoneId: el.dataset.milestoneId || '',
+            milestoneTitle: el.dataset.milestoneTitle || '',
+            milestoneType: el.dataset.milestoneType || '',
+            projectId: el.dataset.projectId || '',
+            projectName: el.dataset.projectName || ''
+        }));
+        if (details.length === 0) {
+            detailBody.innerHTML = '<p class="empty-detail">등록된 연차 신청, 주요일정, 외부 일정, 생일 또는 갱신 일정이 없습니다.</p>';
+        } else {
+            detailBody.innerHTML = details.map(detail => {
+                if (detail.kind === '공휴일') return `<div class="detail-item holiday-detail"><strong>${escapeHtml(detail.label)}</strong><span>공휴일</span></div>`;
+                if (detail.kind === '갱신') return `<div class="detail-item renewal-detail">${employeeHeading(detail.employeeId, detail.employeeName)}<span>${escapeHtml(detail.label)}</span></div>`;
+                if (detail.kind === '생일') return `<div class="detail-item birthday-detail"><span class="birthday-detail-icon" aria-hidden="true">🎂</span>${employeeHeading(detail.employeeId, detail.employeeName)}<span>${escapeHtml(detail.label)}</span></div>`;
+                if (detail.kind === '주요일정') {
+                    const project = projectIdentity(detail.projectId, detail.projectName);
+                    return `<div class="detail-item milestone-detail"><span class="milestone-detail-icon" aria-hidden="true">📌</span><strong>${escapeHtml(detail.milestoneTitle)}</strong><span class="milestone-detail-meta"><span>${escapeHtml(detail.milestoneType)}</span>${project ? `<span aria-hidden="true"> · </span>${project}` : ''}</span></div>`;
+                }
+                if (detail.kind === '외부일정') {
+                    const range = detail.startDate === detail.endDate ? detail.startDate : `${detail.startDate} ~ ${detail.endDate}`;
+                    const editButton = canManageExternalSchedules
+                        ? ['edit','delete'].map(action => `<button type="button" class="cw-button external-schedule-${action}-button" data-size="compact" data-variant="${action === 'delete' ? 'danger' : 'default'}" data-schedule-id="${escapeHtml(detail.scheduleId)}" data-snapshot="${escapeHtml(detail.scheduleSnapshot)}" data-employee-id="${escapeHtml(detail.employeeId)}" data-employee-name="${escapeHtml(detail.employeeName)}" data-category="${escapeHtml(detail.category)}" data-start-date="${escapeHtml(detail.startDate)}" data-end-date="${escapeHtml(detail.endDate)}" data-memo="${escapeHtml(detail.memo)}">${action === 'delete' ? '삭제' : '수정'}</button>`).join('')
+                        : '';
+                    const memo = detail.memo ? escapeHtml(detail.memo).replace(/\n/g, '<br>') : '<span class="muted-text">-</span>';
+                    return `<div class="detail-item external-schedule-detail">${employeeHeading(detail.employeeId, detail.employeeName)}<span>${escapeHtml(detail.category)} · ${escapeHtml(range)}</span><p class="detail-work-plan"><b>메모</b>${memo}</p><div class="detail-item-actions">${editButton}</div></div>`;
+                }
+                const { requestId, employeeId, employeeName, portionName, statusName, statusCode, canSelfCancel, isAdvance, advanceDays } = detail;
+                const advanceLabel = detail.advanceLabel || `가불 ${advanceDays}일`;
+                const advanceText = isAdvance ? `<span class="advance-badge detail-advance-badge cw-state-pill" data-tone="warning">${escapeHtml(advanceLabel)} · 다음 월차/연차에서 차감</span>` : '';
+                const reason = `<p class="detail-work-plan"><b>신청 사유</b>${detail.reason ? escapeHtml(detail.reason).replace(/\n/g, '<br>') : '<span class="muted-text">-</span>'}</p>`;
+                const workPlan = `<p class="detail-work-plan"><b>업무 일정/인수인계</b>${detail.workPlan ? escapeHtml(detail.workPlan).replace(/\n/g, '<br>') : '<span class="muted-text">-</span>'}</p>`;
+                const deleteButton = (canAdminEditCalendar && canForceDelete)
+                    ? `<button type="button" class="cw-button force-delete-button" data-variant="danger" data-size="compact" data-request-id="${escapeHtml(requestId)}" data-admin-target="${escapeHtml(detail.adminTarget)}">신청 전체 강제 삭제</button>`
+                    : '';
+                const selfActionData = `data-snapshot="${escapeHtml(detail.snapshot)}" data-status="${escapeHtml(statusCode)}" data-dates="${escapeHtml(detail.displayDates)}" data-reason="${escapeHtml(detail.reason)}"`;
+                let selfActionButton = '';
+                if (canApplyFromDetail && canSelfCancel && employeeId === currentEmployeeId) {
+                    if (statusCode === 'Pending') selfActionButton = `<button type="button" class="cw-button detail-cancel-button" data-size="compact" data-request-id="${escapeHtml(requestId)}" data-mode="cancel" ${selfActionData}>신청 취소</button>`;
+                    else if (statusCode === 'Approved') selfActionButton = `<button type="button" class="cw-button detail-cancel-button" data-size="compact" data-request-id="${escapeHtml(requestId)}" data-mode="cancel" ${selfActionData}>취소 요청</button>`;
+                    else if (statusCode === 'CancelRequested') selfActionButton = `<button type="button" class="cw-button detail-cancel-button" data-size="compact" data-request-id="${escapeHtml(requestId)}" data-mode="withdraw" ${selfActionData}>취소 요청 철회</button>`;
+                }
+                return `<div class="detail-item leave-detail">${employeeHeading(employeeId, employeeName)}<span>${escapeHtml(portionName)} · ${escapeHtml(statusName)}</span>${advanceText}${reason}${workPlan}<div class="detail-item-actions">${selfActionButton}${deleteButton}</div></div>`;
+            }).join('');
+        }
+
+        if (detailApplyButton) {
+            const canApply = canApplyFromDetail && date >= todayValue;
+            detailApplyButton.style.display = canApply ? '' : 'none';
+            detailApplyButton.textContent = canApply ? '이 날짜에 연차 신청' : '지난 날짜는 신청할 수 없습니다';
+            detailApplyButton.dataset.date = date;
+        }
+        window.LeaveAdminCalendar?.selectDate(date, defaultExternalScheduleEmployeeId);
+        resetExternalScheduleForm(date);
+        if (detailNode === detailModal && detailLifetime) return;
+        hideDayDetail();
+        detailNode = detailModal;
+        detailLifetime = window.CompanyDialog.attach(detailModal, {
+            scope:'dismiss',
+            returnFocus:cell.querySelector('[data-day-detail-trigger]') || cell,
+            initialFocus:detailTitle,
+            canClose:()=>!window.LeaveFormSession?.pending,
+            onClose:()=>{detailLifetime=null;detailNode=null;}
+        });
+    }
+
+    function hideDayDetail() {
+        detailLifetime?.dispose(); detailLifetime=null; detailNode=null;
+    }
+
+    function beginApplyForDate(date) {
+        if (!date || date < todayValue) return;
+        hideDayDetail();
+        showApply(false);
+        setDates(date, date);
+        completedRange = false;
+    }
+
+    function updateBrowserUrl(url) {
+        const target = new URL(url, window.location.origin);
+        window.history.replaceState(null, '', target.pathname + target.search);
+    }
+
+    async function readArea(channel, url, areaId, isCurrent) {
+        const target = new URL(url, window.location.href);
+        const result = await readSession.run(channel, async signal => {
+            return window.LeaveDashboardRead.read(target.href, signal);
+        }, 15000);
+        if (result.status === 'cancelled' || !isCurrent() || !result.isCurrent?.()) return null;
+        if (result.status === 'error') throw result.error;
+        const doc = new DOMParser().parseFromString(result.value, 'text/html'), matches = doc.querySelectorAll(`#${areaId}`);
+        if (matches.length !== 1 || matches[0].dataset.readOwner !== currentEmployeeId || matches[0].querySelector('script')) throw new Error(`${areaId} response is invalid`);
+        return { area: matches[0], url: target.href };
+    }
+
+    function canLoadCalendar() {
+        return !detailDisposed && !preferencePending && !window.LeaveFormSession?.pending && !window.LeaveFormSession?.invalid
+            && !window.LeaveAdminCalendar?.blocksNavigation() && !window.LeaveExternalSchedule?.blocksNavigation()
+            && document.documentElement.dataset.leaveSelfBusy !== 'true';
+    }
+
+    function syncDashboardQuery(url) {
+        const params = new URL(url).searchParams;
+        for (const key of ['Year', 'Month', 'CalendarView', 'SelfOnly', 'ShowOthers']) {
+            if (!params.has(key)) continue;
+            document.querySelectorAll(`form:not(#calendarMoveForm) input[type="hidden"][name="${key}"]`)
+                .forEach(input => { input.value = params.get(key); });
+        }
+    }
+
+    function handleCalendarPreferenceChange(event) {
+        const { url, toggle } = event.detail || {};
+        if (!url || !document.getElementById('calendarArea')?.contains(toggle)) return;
+        event.preventDefault();
+        if (!canLoadCalendar()) { toggle.checked = !toggle.checked; return; }
+        const request = loadCalendar(url);
+        preferencePending = true;
+        toggle.disabled = true;
+        void request.finally(() => {
+            preferencePending = false;
+            if (toggle.isConnected) toggle.disabled = false;
+        });
+    }
+    document.addEventListener('leave-calendar-preference-change', handleCalendarPreferenceChange);
+
+    async function loadCalendar(url) {
+        if (!canLoadCalendar()) return;
+        const area = document.getElementById('calendarArea');
+        if (!area || !url) return;
+        const requestId = ++calendarFetchSeq;
+        const formRevision = window.LeaveFormSession?.revision;
+        area.classList.add('is-loading');
+        try {
+            const result = await readArea('leave-calendar', url, 'calendarArea', () => requestId === calendarFetchSeq);
+            if (!result || requestId !== calendarFetchSeq) return;
+            if (formRevision !== window.LeaveFormSession?.revision || window.LeaveFormSession?.pending || window.LeaveFormSession?.invalid) return;
+            const nextArea = result.area;
+            if (document.documentElement.dataset.leaveSelfBusy === 'true') return;
+            if (window.LeaveAdminCalendar?.blocksNavigation() || window.LeaveExternalSchedule?.blocksNavigation()) return;
+            area.replaceWith(nextArea);
+            updateBrowserUrl(result.url);
+            syncDashboardQuery(result.url);
+            bindCalendarArea();
+            if (selecting) refreshSelectionClasses();
+        } catch (error) {
+            console.error(error);
+            if (formRevision !== window.LeaveFormSession?.revision || window.LeaveFormSession?.pending || window.LeaveFormSession?.invalid) return;
+            if (window.LeaveAdminCalendar?.blocksNavigation() || window.LeaveExternalSchedule?.blocksNavigation()) return;
+            window.location.href = url;
+        } finally {
+            if (requestId === calendarFetchSeq) document.getElementById('calendarArea')?.classList.remove('is-loading');
+        }
+    }
+
+    function urlFromCalendarForm(form) {
+        const params = new URLSearchParams(new FormData(form));
+        const check = form.querySelector('input[data-calendar-preference-toggle]');
+        if (check) { params.delete(check.name); params.set(check.name, String(check.checked)); }
+        const url = new URL(window.location.href);
+        url.search = params.toString();
+        return url.toString();
+    }
+
+    function buildRequestListUrl(form) {
+        const params = new URLSearchParams(new FormData(form));
+        const url = new URL(window.location.href);
+        url.search = params.toString();
+        return url.toString();
+    }
+
+    async function loadRequestList(url) {
+        if (window.LeaveFormSession?.pending || window.LeaveFormSession?.invalid) return;
+        if (document.documentElement.dataset.leaveAdminBusy === 'true' || document.documentElement.dataset.leaveExternalBusy === 'true') return;
+        if (document.documentElement.dataset.leaveSelfBusy === 'true') return;
+        const area = document.getElementById('leaveRequestsArea');
+        if (!area || !url) return;
+        const requestId = ++requestListFetchSeq;
+        const formRevision = window.LeaveFormSession?.revision;
+        area.classList.add('is-loading');
+        try {
+            const result = await readArea('leave-request-list', url, 'leaveRequestsArea', () => requestId === requestListFetchSeq);
+            if (!result || requestId !== requestListFetchSeq) return;
+            if (formRevision !== window.LeaveFormSession?.revision || window.LeaveFormSession?.pending || window.LeaveFormSession?.invalid) return;
+            const nextArea = result.area;
+            if (document.documentElement.dataset.leaveSelfBusy === 'true') return;
+            if (document.documentElement.dataset.leaveAdminBusy === 'true' || document.documentElement.dataset.leaveExternalBusy === 'true') return;
+            area.replaceWith(nextArea);
+            bindRequestListArea();
+        } catch (error) {
+            console.error(error);
+            if (formRevision !== window.LeaveFormSession?.revision || window.LeaveFormSession?.pending || window.LeaveFormSession?.invalid) return;
+            if (window.LeaveAdminCalendar?.blocksNavigation() || window.LeaveExternalSchedule?.blocksNavigation()) return;
+            window.location.href = url;
+        } finally {
+            if (requestId === requestListFetchSeq) document.getElementById('leaveRequestsArea')?.classList.remove('is-loading');
+        }
+    }
+
+    function bindRequestListArea() {
+        const area = document.getElementById('leaveRequestsArea');
+        const form = document.getElementById('leaveRequestListForm');
+        if (!area || !form) return;
+        form.querySelector('select[name="RequestLimit"]')?.addEventListener('change', () => {
+            const page = form.querySelector('input[name="RequestPage"]');
+            if (page) page.value = '1';
+            loadRequestList(buildRequestListUrl(form));
+        });
+        area.querySelectorAll('.pager a[href]').forEach(link => {
+            link.addEventListener('click', event => {
+                if (link.classList.contains('is-disabled')) { event.preventDefault(); return; }
+                event.preventDefault();
+                loadRequestList(link.href);
+            });
+        });
+        const jumpForm = document.getElementById('leaveRequestPageJumpForm');
+        jumpForm?.addEventListener('submit', event => {
+            event.preventDefault();
+            const pageInput = jumpForm.querySelector('input[name="RequestPage"]');
+            if (pageInput) {
+                const min = Number(pageInput.min || 1);
+                const max = Number(pageInput.max || 1);
+                let value = Number(pageInput.value || min);
+                pageInput.value = String(Math.max(min, Math.min(max, value)));
+            }
+            loadRequestList(buildRequestListUrl(jumpForm));
+        });
+    }
+
+    function bindCalendarArea() {
+        const area = document.getElementById('calendarArea');
+        const calendar = getCalendar();
+        const moveForm = document.getElementById('calendarMoveForm');
+        const detailApplyButton = document.getElementById('detailApplyButton');
+        const detailBody = document.getElementById('dayDetailBody');
+        const detailModal = document.getElementById('dayDetailModal');
+        const externalEditCancel = document.getElementById('externalScheduleEditCancel');
+        const externalStartDate = document.getElementById('externalScheduleStartDate');
+        const externalEndDate = document.getElementById('externalScheduleEndDate');
+
+        area?.querySelectorAll('[data-calendar-view-link="true"]').forEach(link => {
+            link.addEventListener('click', event => {
+                event.preventDefault();
+                loadCalendar(link.href);
+            });
+        });
+
+        calendar?.addEventListener('click', event => {
+            const cell = event.target.closest('td[data-date]');
+            if (!cell) return;
+            if (!selecting || document.getElementById('applyForm')?.dataset.applicationSaved === 'true') { showDayDetail(cell); return; }
+            const clicked = cell.dataset.date;
+            if (portion && (portion.value === 'Morning' || portion.value === 'Afternoon' || portion.value === 'Birthday')) { setDates(clicked, clicked); completedRange = true; return; }
+            if (!startInput?.value || completedRange) { setDates(clicked, clicked); completedRange = false; return; }
+            if (clicked < startInput.value) { setDates(clicked, clicked); completedRange = false; return; }
+            setDates(startInput.value, clicked);
+            completedRange = true;
+        });
+
+        moveForm?.querySelectorAll('a[href]').forEach(link => {
+            link.addEventListener('click', event => { event.preventDefault(); loadCalendar(link.href); });
+        });
+        moveForm?.querySelectorAll('input, select').forEach(element => {
+            element.addEventListener('change', () => loadCalendar(urlFromCalendarForm(moveForm)));
+        });
+
+        detailApplyButton?.addEventListener('click', () => beginApplyForDate(detailApplyButton.dataset.date));
+        externalEditCancel?.addEventListener('click', () => window.LeaveExternalSchedule?.reset(detailModal?.dataset.selectedDate || '', defaultExternalScheduleEmployeeId));
+        externalStartDate?.addEventListener('change', () => {
+            if (externalEndDate && (!externalEndDate.value || externalEndDate.value < externalStartDate.value)) externalEndDate.value = externalStartDate.value;
+        });
+        externalEndDate?.addEventListener('change', () => {
+            if (externalStartDate && externalEndDate.value < externalStartDate.value) externalEndDate.value = externalStartDate.value;
+        });
+        detailBody?.addEventListener('click', event => {
+            const externalEdit = event.target.closest('.external-schedule-edit-button');
+            if (externalEdit) { editExternalSchedule(externalEdit); return; }
+            const externalDelete = event.target.closest('.external-schedule-delete-button');
+            if (externalDelete) {
+                window.LeaveExternalSchedule?.remove(externalDelete);
+                return;
+            }
+            const selfAction = event.target.closest('.detail-cancel-button');
+            if (selfAction) {
+                const form = document.getElementById(selfAction.dataset.mode === 'withdraw' ? 'detailWithdrawCancelForm' : 'detailCancelForm');
+                if (!form || document.documentElement.dataset.leaveSelfBusy === 'true') return;
+                form.elements.namedItem('id').value = selfAction.dataset.requestId || '';
+                form.elements.namedItem('expectedSnapshot').value = selfAction.dataset.snapshot || '';
+                form.elements.namedItem('expectedStatus').value = selfAction.dataset.status || '';
+                form.elements.namedItem('displayDates').value = selfAction.dataset.dates || '';
+                form.elements.namedItem('displayReason').value = selfAction.dataset.reason || '';
+                form.requestSubmit();
+                return;
+            }
+
+            const button = event.target.closest('.force-delete-button');
+            if (button) window.LeaveAdminCalendar?.remove(button);
+        });
+        detailModal?.addEventListener('click', event => {
+            if (event.target.closest('[data-close-day-detail]')) detailLifetime?.requestClose();
+            if (event.target === detailModal) {
+                const rect = detailModal.getBoundingClientRect();
+                if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) detailLifetime?.requestClose();
+            }
+        });
+    }
+
+    openBtn?.addEventListener('click', () => showApply(true));
+    birthdayOpenBtn?.addEventListener('click', () => { showApply(true); if (portion) portion.value = 'Birthday'; refreshBirthdayGuidance(); refreshAdvanceWarning(); });
+    viewAsForm?.addEventListener('submit', event => {
+        if (!window.CompanyPageRouter?.navigate) return;
+        event.preventDefault();
+        const target = new URL(window.location.href);
+        target.search = new URLSearchParams(new FormData(viewAsForm)).toString();
+        const previousUrl = window.location.href;
+        void window.CompanyPageRouter.navigate(target, { scrollY: window.scrollY }).then(handled => {
+            if (!handled) window.location.href = target.href;
+            else if (viewAsForm.isConnected && window.location.href === previousUrl)
+                viewAsForm.elements.namedItem('ViewEmployeeId').value = originalViewEmployeeId;
+        });
+    });
+    closeBtn?.addEventListener('click', hideApply);
+    startInput?.addEventListener('change', () => {
+        if (!endInput.value || endInput.value < startInput.value || portion.value === 'Morning' || portion.value === 'Afternoon' || portion.value === 'Birthday') endInput.value = startInput.value;
+        completedRange = false;
+        refreshSelectionClasses();
+        refreshAdvanceWarning();
+        refreshBirthdayGuidance();
+    });
+    endInput?.addEventListener('change', () => {
+        if (endInput.value < startInput.value) endInput.value = startInput.value;
+        if (portion.value === 'Morning' || portion.value === 'Afternoon' || portion.value === 'Birthday') endInput.value = startInput.value;
+        completedRange = true;
+        refreshSelectionClasses();
+        refreshAdvanceWarning();
+        refreshBirthdayGuidance();
+    });
+    portion?.addEventListener('change', () => {
+        if (portion.value === 'Morning' || portion.value === 'Afternoon' || portion.value === 'Birthday') setDates(startInput.value, startInput.value);
+        else refreshSelectionClasses();
+        refreshAdvanceWarning();
+        refreshBirthdayGuidance();
+    });
+
+    bindCalendarArea();
+    bindRequestListArea();
+    if (selecting) refreshSelectionClasses();
+    refreshBirthdayGuidance();
+})();
+</script>
+}

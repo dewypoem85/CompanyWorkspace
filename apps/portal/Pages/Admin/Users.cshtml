@@ -1,0 +1,524 @@
+@page
+@model CompanyPortal.Pages.Admin.UsersModel
+@using CompanyPortal.Workspace
+@using CompanyPortal.Models
+@{
+    ViewData["OrganizationTab"] = "employees";
+}
+<section class="admin-hero">
+    <div>
+        <span class="eyebrow"><span class="eyebrow-dot"></span>People & access</span>
+        <h1>회사 계정·접근 권한 관리</h1>
+        <p>실제 직원과 공용 테스트 계정, 시스템 접근 권한을 한 곳에서 관리합니다.</p>
+    </div>
+    <a class="button button-primary" href="#add-employee">계정 추가</a>
+</section>
+
+<partial name="_OrganizationTabs" />
+<link rel="stylesheet" href="~/css/account-management.css" asp-append-version="true" />
+<section class="metric-grid" aria-label="회사 계정 현황">
+    <article><span class="metric-icon metric-blue">직원</span><div><small>등록 직원</small><strong data-account-metric="EmployeeCount">@Model.EmployeeCount</strong><span>명</span></div></article>
+    <article><span class="metric-icon metric-slate">공용</span><div><small>공용 테스트</small><strong data-account-metric="SharedAccountCount">@Model.SharedAccountCount</strong><span>개</span></div></article>
+    <article><span class="metric-icon metric-green">활성</span><div><small>활성 계정</small><strong data-account-metric="ActiveUserCount">@Model.ActiveUserCount</strong><span>명</span></div></article>
+    <article><span class="metric-icon metric-violet">관리</span><div><small>관리자·마스터</small><strong data-account-metric="AdministratorCount">@Model.AdministratorCount</strong><span>명</span></div></article>
+    <article><span class="metric-icon metric-amber">CS</span><div><small>CS 접근 가능</small><strong data-account-metric="CsAccessCount">@Model.CsAccessCount</strong><span>명</span></div></article>
+    <article><span class="metric-icon metric-cyan">ST</span><div><small>통계 접근 가능</small><strong data-account-metric="StatisticsAccessCount">@Model.StatisticsAccessCount</strong><span>명</span></div></article>
+    <article><span class="metric-icon metric-blue">SH</span><div><small>시트 접근 가능</small><strong data-account-metric="SheetAccessCount">@Model.SheetAccessCount</strong><span>명</span></div></article>
+</section>
+
+@if (!Model.ActorIsMaster)
+{
+    <div class="callout callout-info"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-6v-4m0-4h.01"/></svg><span>관리자는 일반 직원만 관리할 수 있습니다. 관리자·마스터 임명과 변경은 회사 마스터가 담당합니다.</span></div>
+}
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div data-workspace-state="error" data-state-title="입력 또는 저장 결과 확인이 필요합니다." data-state-message="@Model.Error"><p>@Model.Error</p></div>
+}
+@if (Model.SavedCount.HasValue)
+{
+    <div data-workspace-state="success" data-state-title="저장했습니다." data-state-message="@(Model.SavedCount.Value)명의 변경사항을 한 번에 저장했습니다."><p>@(Model.SavedCount.Value)명의 변경사항을 한 번에 저장했습니다.</p></div>
+}
+@if (Model.HtmlDrafts.Count > 0)
+{
+    <section class="panel panel-body" data-html-draft-recovery aria-label="실패한 제출의 입력 보관">
+        <h2>전송한 입력 보관</h2>
+        <p>아래 값은 저장 확인이 아닌 전송 당시의 초안입니다. 복원된 행도 기존 버전을 유지합니다. 형식·권한·기준값을 확인할 수 없는 초안은 복사용으로만 표시합니다. 새로고침하거나 이 화면을 닫으면 사라집니다.</p>
+        <a class="button button-secondary" asp-page="/Admin/Users" target="_blank" rel="noopener">현재 계정 목록 확인 (새 탭)</a>
+        @{ var draftIndex = 0; }
+        @foreach (var draft in Model.HtmlDrafts)
+        {
+            var draftKey = $"html-draft-{draftIndex++}";
+            <section class="html-account-draft">
+                <h3>@draft.Label · @(draft.Restored ? "편집 양식에 복원됨 · 미저장" : "입력 확인 필요 · 복사용")</h3>
+                <button type="button" class="cw-button" data-cw-disclosure="@draftKey" data-cw-open-label="원문 닫기" data-cw-closed-label="원문 보기" aria-expanded="@(!draft.Restored ? "true" : "false")">원문 보기</button>
+                <div data-cw-disclosure-panel="@draftKey" hidden="@draft.Restored">
+                @if (draft.Version is not null) { <p>전송한 버전: @draft.Version</p> }
+                <dl>@foreach (var field in AccountFields.All) { <div><dt>@field.Label</dt><dd><pre>@(draft.Fields[field.Key].Length == 0 ? "(전송되지 않음)" : string.Join("\n", draft.Fields[field.Key]))</pre></dd></div> }</dl>
+                </div>
+            </section>
+        }
+    </section>
+}
+
+<details id="add-employee" class="panel collapsible-panel" open>
+    <summary><span><small>New account</small><strong>새 회사 계정 등록</strong></span><span class="summary-action">양식 열기 <b>+</b></span></summary>
+    <form method="post" asp-page-handler="Add" class="user-form panel-body" data-add-account-form data-html-blocked="@(Model.HtmlAddBlocked ? "true" : "false")" data-account-defaults="@System.Text.Json.JsonSerializer.Serialize(CompanyPortal.Pages.Admin.UsersModel.AddDefaults)">
+        <div data-add-result hidden></div>
+        @foreach (var section in new[] { "identity", "access" })
+        {
+            <div class="form-section-heading"><div><strong>@(section == "identity" ? "계정 · 기본 정보" : "역할 · 시스템 접근")</strong><small>@(section == "identity" ? "실제 직원은 연차관리가 기본 제공됩니다. 공용 테스트 계정은 업무 명단과 연차관리에서 제외됩니다." : "관리자급은 모든 시스템에 접근합니다. 관리자·마스터 지정은 회사 마스터 전용입니다.")</small></div></div>
+            <div class="cw-form-fields">
+            @foreach (var field in AccountFields.All.Where(f => f.Section == section))
+            {
+                <partial name="_AccountField" model="@(new AccountFieldView(Model, Model.AddInput, string.Empty, field))" />
+            }
+            </div>
+        }
+        <div class="shared-account-warning hidden" data-add-shared-warning><strong>공용 계정 주의</strong><span>여러 사람이 같은 Google 계정을 사용하면 작업 감사 로그도 하나의 계정으로 기록됩니다. 필요한 권한만 부여하세요.</span></div>
+        <div class="form-footer"><span>활성 계정은 등록 후 지정한 Google 계정으로 로그인할 수 있습니다.</span><button class="cw-button" data-variant="primary" type="submit" disabled="@Model.HtmlAddBlocked">계정 등록</button></div>
+        <div class="form-footer" data-add-followup hidden>
+            <span data-add-followup-message>아래 목록과 현황은 조회 시점의 내용입니다. 새 탭에서 등록 여부를 확인할 수 있습니다.</span>
+            <a class="button button-secondary" asp-page="/Admin/Users" target="_blank" rel="noopener">계정 목록 확인 (새 탭)</a>
+            <button class="cw-button" type="button" data-add-another hidden>다른 계정 등록</button>
+        </div>
+    </form>
+</details>
+
+<section class="directory-section">
+    <div class="directory-heading">
+        <div><span class="section-kicker">Access matrix</span><h2>회사 계정 권한 일괄 관리</h2><p>직원과 공용 계정의 상태·유형·권한을 한 화면에서 변경한 뒤 한 번만 저장하세요.</p></div>
+        <label class="cw-form-field account-search"><span>회사 계정 검색</span><input class="cw-form-control" type="search" data-user-search placeholder="이름·초성, 이메일, 부서, 계정 유형 검색" /></label>
+    </div>
+    <div class="organization-filter"><label class="cw-form-field"><span>부서</span><select class="cw-form-control" data-department-filter aria-label="부서 필터"><option value="">전체 부서</option>@foreach (var d in Model.Departments) { <option value="@d.Id">@d.Name</option> }</select></label><label class="cw-form-field"><span>프로젝트</span><select class="cw-form-control" data-company-picker="project" data-project-filter aria-label="프로젝트 필터"><option value="">전체 프로젝트</option>@foreach (var p in Model.Projects) { <option value="@p.Id">@p.Name</option> }</select></label></div>
+    <form method="post" asp-page-handler="BulkUpdate" class="access-matrix-form" data-bulk-form data-html-blocked="@(Model.HtmlSaveBlocked ? "true" : "false")" data-account-contract="@System.Text.Json.JsonSerializer.Serialize(AccountFields.All.Select(f => new { key = f.Key, label = f.Label }))">
+        <noscript>
+            <link rel="stylesheet" href="~/css/account-native-form.css" asp-append-version="true" />
+            <p>간편 편집을 사용할 수 없어 전체 입력을 표시합니다. 아래 버튼은 표시된 모든 계정을 함께 제출하며 서버에서 권한과 기존 버전을 확인합니다.</p>
+            <button class="cw-button" data-variant="primary" type="submit" disabled="@Model.HtmlSaveBlocked">입력한 직원 정보 제출</button>
+        </noscript>
+        <div data-bulk-result hidden></div>
+        <div class="directory-toolbar bulk-toolbar">
+            <span><b data-visible-count>@Model.Users.Count</b>개의 계정 · <b data-dirty-count>0</b>개 변경됨</span>
+            <div><span>직원은 연차 기본 제공 · 공용 계정은 연차 제외 · 관리자급은 모든 시스템 자동 접근</span><button class="cw-button" data-size="compact" type="button" data-reset-all disabled>변경 취소</button><button class="cw-button" data-variant="primary" data-size="compact" type="submit" data-save-all disabled>전체 변경 저장</button></div>
+        </div>
+        <div class="access-table-wrap cw-table-scroll" tabindex="0" role="region" aria-label="회사 계정 권한 표">
+            <table class="access-table cw-data-table">
+                <thead>
+                    <tr>
+                        <th>계정</th>
+                        <th>계정 유형</th>
+                        <th>상태 · 공개 범위</th>
+                        <th>회사 역할</th>
+                        <th><span class="permission-heading"><b>연차관리</b><small>기본 권한</small></span></th>
+                        @foreach (var system in Model.ConfigurableSystems)
+                        {
+                            <th><span class="permission-heading"><b>@system.Name</b><button class="cw-button" data-variant="quiet" data-size="compact" type="button" data-toggle-permission="@system.AccessPermission" title="검색 결과 계정의 @system.Name 권한 전체 전환">전체 전환</button></span></th>
+                        }
+                        <th><span class="sr-only">인사정보</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @{ var updateIndex = 0; }
+                @foreach (var user in Model.Users)
+                {
+                    var selected = Model.Selected(user);
+                    var canManage = Model.CanManage(user);
+                    var rowKey = $"user-{user.Id}";
+                    if (canManage)
+                    {
+                        var index = updateIndex++;
+                        var account = Model.EditInputFor(user);
+                        var prefix = $"updates[{index}].";
+                        <tr class="access-row @(CompanyPortal.Models.PermissionCatalog.IsAdministrator(user) ? "role-inherited" : "") @(user.IsSharedAccount ? "shared-account-row" : "")" data-user-row data-row-key="@rowKey" data-department="@user.DepartmentId" data-projects="@string.Join(",", Model.Memberships.Where(m => m.EmployeeId == user.Id).Select(m => m.ProjectId))" data-search="@($"{user.Name} {user.Email} {user.Department} {Model.ProjectNames(user.Id)} {CompanyPortal.Pages.Admin.UsersModel.RoleName(user)} {CompanyPortal.Pages.Admin.UsersModel.AccountTypeName(user)}".ToLowerInvariant())">
+                            <td>
+                                <input type="hidden" name="updates[@index].Baseline" value="@Model.BaselineFor(user)" data-account-baseline data-recovered="@(Model.HasRecoveredDraft(user.Id) ? "true" : "false")" />
+                                <input type="hidden" name="updates[@index].Id" value="@user.Id" />
+                                <input type="hidden" name="updates[@index].UpdatedAtTicks" value="@Model.EditVersionFor(user)" />
+                                <span class="matrix-person"><span class="employee-avatar" data-company-avatar="@user.Id">@(string.IsNullOrWhiteSpace(user.Name) ? "?" : user.Name[..1])</span><span class="employee-main"><strong data-person-name>@user.Name</strong><small>@user.Email</small><em>@(string.IsNullOrWhiteSpace(user.Department) ? "부서 미지정" : user.Department)</em><span class="employee-projects">@Model.ProjectNames(user.Id)</span></span></span>
+                            </td>
+                            @foreach (var field in AccountFields.All.Where(f => f.Placement == "summary"))
+                            {
+                                <td><partial name="_AccountField" model="@(new AccountFieldView(Model, account, prefix, field, user.Name))" />
+                                @if (field.Key == "IsActive") { <button type="button" class="cw-button" data-size="compact" data-detail-toggle="@rowKey" data-cw-disclosure="@rowKey" aria-expanded="false"><span data-privacy-summary="@rowKey">@(user.IsPrivate ? "비공개 직원" : "일반 공개")</span> · 설정</button> }
+                                @if (field.Key == "Role") { <small class="inherited-note">관리자급 전체 접근 · 마스터는 업무 명단 제외</small> }
+                                </td>
+                            }
+                            <td><span class="permission-switch fixed leave-employee-access cw-switch-control" data-tone="success"><input class="cw-switch" type="checkbox" role="switch" checked disabled aria-label="연차관리 기본 접근" /><i class="cw-switch-track" aria-hidden="true"></i><small>기본</small></span><span class="permission-result denied leave-shared-excluded cw-state-pill" data-tone="neutral">제외</span></td>
+                            @foreach (var system in Model.ConfigurableSystems)
+                            {
+                                <td><partial name="_AccountField" model='@(new AccountFieldView(Model, account, prefix, AccountFields.All.Single(f => f.Key == "Permissions"), user.Name, system))' /></td>
+                            }
+                            <td><button type="button" class="cw-button" data-size="compact" data-detail-toggle="@rowKey" data-cw-disclosure="@rowKey" data-cw-open-label="닫기" data-cw-closed-label="정보" aria-expanded="false">정보</button></td>
+                        </tr>
+                        <tr class="matrix-detail-row" data-user-details="@rowKey" data-cw-disclosure-panel="@rowKey" hidden>
+                            <td colspan="@(6 + Model.ConfigurableSystems.Count)">
+                                <div class="matrix-detail-fields cw-form-fields cw-table-detail">
+                                    @foreach (var field in AccountFields.All.Where(f => f.Placement == "detail"))
+                                    {
+                                        <partial name="_AccountField" model="@(new AccountFieldView(Model, account, prefix, field, user.Name))" />
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        <tr class="access-row readonly" data-user-row data-row-key="@rowKey" data-department="@user.DepartmentId" data-projects="@string.Join(",", Model.Memberships.Where(m => m.EmployeeId == user.Id).Select(m => m.ProjectId))" data-search="@($"{user.Name} {user.Email} {user.Department} {Model.ProjectNames(user.Id)} {CompanyPortal.Pages.Admin.UsersModel.RoleName(user)} {CompanyPortal.Pages.Admin.UsersModel.AccountTypeName(user)}".ToLowerInvariant())">
+                            <td><span class="matrix-person"><span class="employee-avatar" data-company-avatar="@user.Id">@(string.IsNullOrWhiteSpace(user.Name) ? "?" : user.Name[..1])</span><span class="employee-main"><strong>@user.Name</strong><small>@user.Email</small><em>@(string.IsNullOrWhiteSpace(user.Department) ? "부서 미지정" : user.Department)</em><span class="employee-projects">@Model.ProjectNames(user.Id)</span></span></span></td>
+                            <td><span class="account-type-badge employee cw-state-pill" data-tone="info">직원</span></td>
+                            <td><span class="status cw-state-pill" data-tone="@(user.IsActive ? "success" : "neutral")">@(user.IsActive ? "활성" : "비활성")</span>@if (user.IsMaster || user.IsPrivate) { <small class="visibility-note">@(user.IsMaster ? "마스터 · 업무 명단 제외" : "비공개 직원")</small> }</td>
+                            <td><span class="role-label">@CompanyPortal.Pages.Admin.UsersModel.RoleName(user)</span></td>
+                            <td><span class="permission-result allowed cw-state-pill" data-tone="info">기본</span></td>
+                            @foreach (var system in Model.ConfigurableSystems)
+                            {
+                                <td><span class="permission-result allowed cw-state-pill" data-tone="info">전체</span></td>
+                            }
+                            <td><span class="locked-label">마스터 전용</span></td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="bulk-save-bar" data-save-bar>
+            <span><strong data-save-summary>변경사항 없음</strong><small>직원 변경만 Leave에 동기화되며 공용 계정은 연차관리에서 제외됩니다.</small></span>
+            <div><button class="cw-button" type="button" data-reset-all disabled>모두 되돌리기</button><button class="cw-button" data-variant="primary" type="submit" data-save-all disabled>전체 변경 저장</button></div>
+        </div>
+    </form>
+    <div class="empty-search hidden" data-search-empty>검색 조건에 맞는 회사 계정이 없습니다.</div>
+</section>
+
+@section Scripts {
+<script src="~/js/account-create.js" asp-append-version="true"></script>
+<script src="~/js/account-review.js" asp-append-version="true"></script>
+<script>
+(() => {
+    const input = document.querySelector('[data-user-search]');
+    const form = document.querySelector('[data-bulk-form]');
+    const disclosures = window.CompanyDisclosure.attach(form);
+    const recovery = document.querySelector('[data-html-draft-recovery]');
+    const recoveryDisclosures = recovery ? window.CompanyDisclosure.attach(recovery) : null;
+    const rows = [...document.querySelectorAll('[data-user-row]')];
+    const editableRows = rows.filter(row => !row.classList.contains('readonly'));
+    const count = document.querySelector('[data-visible-count]');
+    const empty = document.querySelector('[data-search-empty]');
+    const dirtyCount = document.querySelector('[data-dirty-count]');
+    const saveSummary = document.querySelector('[data-save-summary]');
+    const saveBar = document.querySelector('[data-save-bar]');
+    const saveButtons = [...document.querySelectorAll('[data-save-all]')];
+    const resetButtons = [...document.querySelectorAll('[data-reset-all]')];
+    const addForm = document.querySelector('[data-add-account-form]');
+    let transport;
+    let disposed = false, scopeInvalid = form.dataset.htmlBlocked === 'true', resetPending = false;
+    const lifetime = new AbortController();
+    const readSession = window.CompanyReadSession.create();
+    let submittedSignatures = new Map();
+    const snapshot = row => JSON.stringify(row._controls.map(control => ({name:control.name,value:control.value,checked:control.type === 'checkbox' ? control.checked : null})));
+
+    for (const row of editableRows) {
+        const detail = document.querySelector(`[data-user-details="${row.dataset.rowKey}"]`);
+        row._controls = [...row.querySelectorAll('input, select'), ...(detail?.querySelectorAll('input, select') || [])].filter(control => control.name && !control.matches('[data-account-baseline]'));
+        const baselineInput = row.querySelector('[data-account-baseline]');
+        const baseline = JSON.parse(baselineInput.value);
+        row._original = JSON.stringify(row._controls.map(control => ({
+            name: control.name,
+            value: control.type === 'checkbox' ? control.value : control.name.endsWith('.Id') ? baseline.Id : control.name.endsWith('.UpdatedAtTicks') ? baseline.UpdatedAtTicks : baseline.Fields[control.name.split('.').pop()][0] || '',
+            checked: control.type === 'checkbox' ? baseline.Fields[control.name.split('.').pop()].includes(control.value) : null
+        })));
+        // Native reset must use the original baseline, not the failed POST's rendered draft attributes.
+        const originals = JSON.parse(row._original);
+        row._controls.forEach((control,index) => {
+            const current = control.value, checked = control.checked, original = originals[index];
+            if (control.type === 'checkbox') { control.defaultChecked = original.checked; control.checked = checked; }
+            else if (control.tagName === 'SELECT') { for (const option of control.options) option.defaultSelected = option.value === original.value; control.value = current; }
+            else { control.defaultValue = original.value; control.value = current; }
+        });
+        if (baselineInput.dataset.recovered === 'true') disclosures.setOpen(row.dataset.rowKey, true);
+    }
+
+    const updateAccountControls = controls => {
+        const get = key => controls.filter(el => el.name.split('.').pop() === key);
+        const shared = get('AccountType')[0]?.value === 'shared';
+        for (const control of [...get('DepartmentId'), ...get('ProjectIds'), ...get('HireDate'), ...get('BirthDate'), ...get('Role')]) control.disabled = shared;
+        for (const control of get('HireDate')) control.required = !shared;
+        return shared;
+    };
+    const updateAccountTypeState = row => {
+        const shared = updateAccountControls(row._controls);
+        row.classList.toggle('shared-account-row', shared);
+        const privateValue = row._controls.find(control => control.name.endsWith('.IsPrivate'))?.checked;
+        for (const summary of row.querySelectorAll('[data-privacy-summary]')) summary.textContent = privateValue ? '비공개 직원' : '일반 공개';
+    };
+    const updateRoleState = row => {
+        const role = row.querySelector('.role-select')?.value || 'employee';
+        row.classList.toggle('role-inherited', !row.classList.contains('shared-account-row') && role !== 'employee');
+    };
+    const updatePermissionLabels = row => {
+        for (const checkbox of row.querySelectorAll('[data-permission]')) {
+            const label = checkbox.closest('.permission-switch')?.querySelector('.explicit-label');
+            if (label) label.textContent = checkbox.checked ? '허용' : '차단';
+        }
+    };
+    const updateDirtyState = () => {
+        if (disposed || transport?.busy) return;
+        let changed = 0;
+        for (const row of editableRows) {
+            updateAccountTypeState(row);
+            const current = JSON.stringify(row._controls.map(control => ({
+                name: control.name,
+                value: control.value,
+                checked: control.type === 'checkbox' ? control.checked : null
+            })));
+            const dirty = current !== row._original;
+            row.classList.toggle('is-dirty', dirty);
+            if (dirty) changed++;
+            updateRoleState(row);
+            updatePermissionLabels(row);
+        }
+        if (dirtyCount) dirtyCount.textContent = String(changed);
+        if (saveSummary) saveSummary.textContent = changed ? `${changed}명의 변경사항이 있습니다.` : '변경사항 없음';
+        saveBar?.classList.toggle('visible', changed > 0);
+        for (const button of [...saveButtons, ...resetButtons]) button.disabled = changed === 0 || scopeInvalid || resetPending || reviewing;
+        form?.toggleAttribute('data-dirty', changed > 0);
+    };
+
+    form?.addEventListener('input', updateDirtyState);
+    form?.addEventListener('change', updateDirtyState);
+    let submittedRows = [], applyServerSnapshot, reviewing = false;
+    const fieldContract = JSON.parse(form.dataset.accountContract);
+    // Validate the entire snapshot before changing controls, available choices or reset baselines.
+    const validateServerSnapshot = (result, targets, choices = {}) => {
+        const accounts = result?.accounts;
+        if (!Array.isArray(accounts) || accounts.length !== targets.length || new Set(accounts.map(a => a.id)).size !== accounts.length) throw Error('계정 확인 응답이 불완전합니다.');
+        const reconciled = targets.map(row => {
+            const account = accounts.find(a => a.id === row._controls.find(c => c.name.endsWith('.Id')).value);
+            if (!account || typeof account.updatedAtTicks !== 'string' || !/^[1-9]\d*$/.test(account.updatedAtTicks) || BigInt(account.updatedAtTicks) < BigInt(row._controls.find(c => c.name.endsWith('.UpdatedAtTicks')).value)) throw Error('계정 확인 버전이 올바르지 않습니다.');
+            for (const {key} of fieldContract) {
+                const values = account.fields?.[key];
+                if (!Array.isArray(values) || values.some(v => typeof v !== 'string')) throw Error('계정 확인 필드가 누락되었습니다.');
+                const controls = row._controls.filter(c => c.name.endsWith('.' + key));
+                if (['ProjectIds','Permissions'].includes(key)) {
+                    const allowed = new Set([...controls.map(c => c.value), ...(choices[key] || []).map(c => c.value)]);
+                    if (new Set(values).size !== values.length || values.some(v => !allowed.has(v))) throw Error('선택 항목 정의가 변경되었습니다. 초안을 보존한 뒤 새 화면에서 확인해 주세요.');
+                } else {
+                    if (values.length !== 1) throw Error('단일 필드의 확인 값이 올바르지 않습니다.');
+                    if (['IsPrivate','IsActive'].includes(key) && !['true','false'].includes(values[0])) throw Error('계정 상태 확인 값이 올바르지 않습니다.');
+                    const select = controls.find(c => c.tagName === 'SELECT');
+                    if (select && ![...select.options].some(o => o.value === values[0]) && !(choices[key] || []).some(c => c.value === values[0])) throw Error('확인 값에 해당하는 선택 항목이 없습니다.');
+                }
+            }
+            return {row,account};
+        });
+        const metrics = [...document.querySelectorAll('[data-account-metric]')];
+        for (const metric of metrics) if (!Number.isSafeInteger(result.metrics?.[metric.dataset.accountMetric]) || result.metrics[metric.dataset.accountMetric] < 0) throw Error('계정 현황 확인 응답이 불완전합니다.');
+        return {reconciled,metrics};
+    };
+    const fieldsFromSnapshot = serialized => {
+        const controls = JSON.parse(serialized), fields = {};
+        for (const field of fieldContract) {
+            const matches = controls.filter(c => c.name.endsWith('.' + field.key));
+            fields[field.key] = field.key === 'IsPrivate' ? [matches.some(c => c.checked) ? 'true' : 'false'] : matches.filter(c => c.checked === null || c.checked).map(c => c.value);
+        }
+        if (fields.AccountType[0] === 'shared') { fields.Role = ['employee']; fields.DepartmentId = ['']; fields.BirthDate = ['']; fields.ProjectIds = []; }
+        if (fields.Role[0] === 'master') fields.ProjectIds = [];
+        return fields;
+    };
+    const reviewConflict = async () => {
+        if (disposed || scopeInvalid || resetPending || reviewing || transport.busy) return;
+        const targets = editableRows.filter(row => row.classList.contains('is-dirty'));
+        if (!targets.length) return;
+        reviewing = true;
+        updateDirtyState();
+        const captured = targets.map(row => ({row, serialized:snapshot(row), before:fieldsFromSnapshot(row._original)}));
+        const state = form.querySelector('[data-bulk-result]');
+        try {
+            window.CompanyState.render(state,{kind:'loading',title:'현재 저장 내용을 확인합니다.',message:'입력한 초안은 그대로 유지됩니다.'});
+            const url = new URL(form.action);url.searchParams.set('handler','Review');
+            for (const {row} of captured) url.searchParams.append('ids',row._controls.find(c=>c.name.endsWith('.Id')).value);
+            const observed = await readSession.run('account-review',async signal=>{
+                const reply = await window.CompanyAccountReview.read(url,signal);signal.throwIfAborted();return reply;
+            },30000);
+            if (observed.status === 'cancelled' || disposed || scopeInvalid || !observed.isCurrent?.()) return;
+            if (observed.status === 'error') throw observed.error;
+            const reply = observed.value, data = reply.data;
+            if (reply.protocol !== 'workspace-form-v1' || reply.outcome !== 'snapshot' || !Array.isArray(data?.accounts) || data.accounts.length !== captured.length || new Set(data.accounts.map(a=>a.id)).size !== captured.length) throw Error('비교할 계정 정보가 불완전합니다.');
+            const choices = data.choices;
+            for (const key of ['DepartmentId','ProjectIds']) if (!Array.isArray(choices?.[key]) || choices[key].some(c=>typeof c.value !== 'string'|| !/^[1-9]\d*$/.test(c.value)||typeof c.label !== 'string') || new Set(choices[key].map(c=>c.value)).size !== choices[key].length) throw Error('선택 목록을 확인하지 못했습니다.');
+            validateServerSnapshot(data, targets, choices);
+            const items = captured.map(({row,serialized,before})=>{
+                const id = row._controls.find(c=>c.name.endsWith('.Id')).value, current = data.accounts.find(a=>a.id===id);
+                const draft=fieldsFromSnapshot(serialized);
+                const display = (key,values) => values.map(value=>{
+                    if(key==='IsPrivate')return value==='true'?'비공개':'일반 공개';
+                    if(key==='IsActive')return value==='true'?'활성':'비활성';
+                    const select=row._controls.find(c=>c.name.endsWith('.'+key)&&c.tagName==='SELECT');
+                    const option=select&&[...select.options].find(o=>o.value===value);
+                    const choice=choices[key]?.find(c=>c.value===value);
+                    if(choice)return choice.label+' (#'+value+')';
+                    if(option)return option.textContent;
+                    const check=row._controls.find(c=>c.name.endsWith('.'+key)&&c.value===value);
+                    if(key==='Permissions'&&check)return check.getAttribute('aria-label')||value;
+                    if(key==='ProjectIds'&&check)return (check.closest('label')?.querySelector('[data-choice-text]')?.textContent||value)+' (#'+value+')';
+                    return value||'—';
+                }).join('\n')||'—';
+                return {id,entityKind:'employee',label:row.querySelector('[data-person-name]').textContent,fields:fieldContract.map(f=>({...f,entityKind:f.key==='ProjectIds'?'project':undefined,set:['ProjectIds','Permissions'].includes(f.key),before:before[f.key],draft:draft[f.key],current:current.fields[f.key],format:values=>display(f.key,values)}))};
+            });
+            const unchanged = () => !lifetime.signal.aborted && captured.every(c=>snapshot(c.row)===c.serialized);
+            if (!unchanged()) throw Error('조회 중 초안 또는 로그인 상태가 바뀌었습니다. 다시 비교해 주세요.');
+            const merged = await window.CompanyReview.open({title:'직원 변경 내용 비교',items,returnFocus:state,signal:lifetime.signal,validate:items=>{
+                for(const {fields} of items){
+                    if(fields.AccountType[0]==='shared'&&(fields.Role[0]!=='employee'||fields.DepartmentId[0]||fields.ProjectIds.length)) return '공용 계정은 직원 역할·부서 미지정·참여 프로젝트 없음으로 선택해 주세요.';
+                    if(fields.Role[0]==='master'&&fields.ProjectIds.length) return '회사 마스터는 참여 프로젝트 없음으로 선택해 주세요.';
+                }
+            }});
+            if (disposed || scopeInvalid) return;
+            if (!merged) { window.CompanyState.render(state,{kind:'error',title:'비교를 취소했습니다.',message:'초안과 기존 버전을 그대로 유지했습니다.',actionLabel:'다시 비교',onAction:reviewConflict});return; }
+            if (!unchanged()) throw Error('비교 중 초안 또는 로그인 상태가 바뀌었습니다. 다시 비교해 주세요.');
+            // Add server-authorized choices that appeared after this page was loaded. Do not look up by name.
+            for (const {row} of captured) {
+                const detail=document.querySelector(`[data-user-details="${row.dataset.rowKey}"]`);
+                const department=row._controls.find(c=>c.name.endsWith('.DepartmentId'));
+                for(const choice of choices.DepartmentId){const existing=[...department.options].find(o=>o.value===choice.value);if(existing)existing.textContent=choice.label;else department.add(new Option(choice.label,choice.value));}
+                const group=detail.querySelector('[data-account-field="ProjectIds"]'),prefix=department.name.slice(0,-'DepartmentId'.length);
+                for(const choice of choices.ProjectIds){
+                    const result=window.CompanyEntityChoices.upsertCheckbox(group,{name:prefix+'ProjectIds',value:choice.value,label:choice.label,entityId:choice.value,disabled:department.disabled});
+                    if(result.created)row._controls.push(result.input);
+                }
+            }
+            submittedRows=targets;applyServerSnapshot(data);
+            for(const item of merged){const row=targets.find(row=>row._controls.find(c=>c.name.endsWith('.Id')).value===item.id);
+                for(const control of row._controls){const values=item.fields[control.name.split('.').pop()];if(!values)continue;
+                    if(control.type==='checkbox')control.checked=values.includes(control.value);else control.value=values[0]||'';
+                }
+            }
+            window.CompanyEntityChoices.refresh();updateDirtyState();
+            window.CompanyState.render(state,{kind:'empty',title:'검토한 값으로 초안을 갱신했습니다.',message:'아직 서버에 저장하지 않았습니다. 변경사항을 확인한 뒤 전체 변경 저장을 눌러 주세요.'});
+        } catch(error) {
+            if (!disposed && !scopeInvalid) window.CompanyState.render(state,{kind:'error',title:'변경 내용을 비교하지 못했습니다.',message:(error.message||'연결을 확인해 주세요.')+' 기존 초안을 유지했습니다.',actionLabel:'다시 비교',onAction:reviewConflict});
+        } finally { reviewing=false;updateDirtyState(); }
+    };
+    transport = window.CompanyForm.attach(form, {
+        state: form.querySelector('[data-bulk-result]'),
+        canSubmit: () => !disposed && !scopeInvalid && !resetPending && !reviewing && form.hasAttribute('data-dirty'),
+        onConflict: reviewConflict,
+        prepare: data => {
+            submittedRows = editableRows.filter(row => row.classList.contains('is-dirty'));
+            submittedSignatures = new Map(submittedRows.map(row => [row,snapshot(row)]));
+            const indexes = new Set(submittedRows.map(row => row._controls[0].name.match(/^updates\[(\d+)\]/)[1]));
+            for (const key of [...data.keys()]) {
+                const index = key.match(/^updates\[(\d+)\]/)?.[1];
+                if (index && !indexes.has(index)) data.delete(key);
+            }
+            // Explicit native collection indexes allow changed rows only, including non-contiguous indexes.
+            for (const index of indexes) data.append('updates.Index', index);
+        },
+        onSaved: applyServerSnapshot = result => {
+            if (disposed || scopeInvalid || (transport.busy && submittedRows.some(row => snapshot(row) !== submittedSignatures.get(row)))) throw Error('저장 중 초안 또는 로그인 상태가 바뀌었습니다. 기존 입력을 유지합니다.');
+            const {reconciled,metrics} = validateServerSnapshot(result, submittedRows);
+            for (const {row,account} of reconciled) {
+                for (const control of row._controls) {
+                    const key = control.name.split('.').pop();
+                    if (key === 'Id') continue;
+                    const values = key === 'UpdatedAtTicks' ? [account.updatedAtTicks] : account.fields[key];
+                    if (control.type === 'checkbox') control.defaultChecked = control.checked = values.includes(control.value);
+                    else if (control.tagName === 'SELECT') for (const option of control.options) option.defaultSelected = option.selected = values.includes(option.value);
+                    else control.defaultValue = control.value = values[0] || '';
+                }
+                row._original = snapshot(row);
+                const baselineInput = row.querySelector('[data-account-baseline]');
+                baselineInput.defaultValue = baselineInput.value = JSON.stringify({Id:account.id,UpdatedAtTicks:account.updatedAtTicks,Fields:account.fields});
+                baselineInput.dataset.recovered = 'false';
+                const name = account.fields.Name[0], email = account.fields.Email[0];
+                row.querySelector('[data-person-name]').textContent = name;
+                row.querySelector('.employee-main small').textContent = email;
+                const department = row._controls.find(c => c.name.endsWith('.DepartmentId'));
+                const departmentName = department.selectedOptions[0]?.textContent || '부서 미지정';
+                row.querySelector('.employee-main em').textContent = departmentName;
+                const projects = row._controls.filter(c => c.name.endsWith('.ProjectIds') && c.checked).map(c => c.closest('label').querySelector('[data-choice-text]').textContent);
+                row.querySelector('.employee-projects').textContent = projects.join(' · ');
+                row.dataset.department = account.fields.DepartmentId[0]; row.dataset.projects = account.fields.ProjectIds.join(',');
+                row.dataset.search = [name,email,departmentName,...projects,account.fields.AccountType[0] === 'shared' ? '공용 테스트' : '직원',account.fields.Role[0] === 'employee' ? '' : '관리자'].join(' ').toLowerCase();
+            }
+            for (const metric of metrics) metric.textContent = result.metrics[metric.dataset.accountMetric];
+            window.CompanyEntityChoices?.refresh();
+            filterRows();
+        },
+        onSettled: updateDirtyState
+    });
+    for (const button of resetButtons) {
+        button.addEventListener('click', async () => {
+            if (disposed || scopeInvalid || resetPending || reviewing || transport.busy || !form.hasAttribute('data-dirty')) return;
+            const captured = editableRows.map(row => ({row,value:snapshot(row)}));
+            const unchanged = () => !disposed && !scopeInvalid && !transport.busy && captured.every(item => snapshot(item.row) === item.value);
+            resetPending = true;updateDirtyState();
+            try {
+                const confirmed = await window.CompanyDialog.confirm({title:'직원 변경사항 되돌리기',
+                    message:'기존 직원의 미저장 변경만 마지막으로 확인한 값으로 되돌립니다. 새 계정 등록 초안은 그대로 유지합니다. 서버에 저장된 내용을 되돌리는 작업은 아닙니다.',
+                    details:[{label:'변경된 직원',value:dirtyCount.textContent+'명'}],confirmLabel:'되돌리기',tone:'danger',returnFocus:button,signal:lifetime.signal,
+                    validate:() => unchanged() ? undefined : '확인 중 입력 또는 로그인 상태가 바뀌었습니다. 취소 후 다시 확인해 주세요.'});
+                if (!confirmed || !unchanged()) return;
+                form.reset();window.CompanyEntityChoices?.refresh();
+            } finally { resetPending = false;updateDirtyState(); }
+        });
+    }
+    for (const button of document.querySelectorAll('[data-toggle-permission]')) {
+        button.addEventListener('click', () => {
+            if (disposed || scopeInvalid || resetPending || reviewing || transport.busy) return;
+            const permission = button.dataset.togglePermission;
+            const targets = editableRows
+                .filter(row => !row.classList.contains('hidden'))
+                .map(row => [...row.querySelectorAll('[data-permission]')].find(control => control.dataset.permission === permission))
+                .filter(Boolean);
+            const next = targets.some(control => !control.checked);
+            for (const control of targets) control.checked = next;
+            updateDirtyState();
+        });
+    }
+    const filterRows = () => {
+        const query = input.value.trim().toLowerCase();
+        const matchesSearch = window.CompanySearch.createMatcher(query);
+        let visible = 0;
+        for (const row of rows) {
+            const dept = document.querySelector('[data-department-filter]')?.value;
+            const project = document.querySelector('[data-project-filter]')?.value;
+            const matches = matchesSearch(row.dataset.search) && (!dept || row.dataset.department === dept) && (!project || row.dataset.projects.split(',').includes(project));
+            if (!matches) disclosures.setOpen(row.dataset.rowKey, false, {returnFocus:input});
+            row.classList.toggle('hidden', !matches);
+            if (matches) visible++;
+        }
+        if (count) count.textContent = String(visible);
+        empty?.classList.toggle('hidden', visible !== 0);
+    };
+    input?.addEventListener('input', filterRows);
+    document.querySelectorAll('[data-department-filter], [data-project-filter]').forEach(el => el.addEventListener('change', filterRows));
+    const unload = event => {
+        if (disposed || !form?.hasAttribute('data-dirty')) return;
+        event.preventDefault();
+        event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', unload);
+    const updateAddAccountType = () => {
+        const shared = updateAccountControls([...addForm.querySelectorAll('input,select')].filter(control => control.name));
+        addForm.querySelector('[data-add-shared-warning]')?.classList.toggle('hidden', !shared);
+    };
+    const createAccount = window.CompanyAccountCreate.attach(addForm, {updateType:updateAddAccountType});
+    const invalidateScope = () => {
+        scopeInvalid = true;lifetime.abort();readSession.cancel('account-review');updateDirtyState();
+        window.CompanyState.render(form.querySelector('[data-bulk-result]'),{kind:'denied',title:'로그인 계정과 권한을 다시 확인해 주세요.',
+            message:'입력한 초안은 유지했습니다. 이전 요청은 서버에는 반영되었을 수 있습니다. 새 화면에서 현재 계정과 저장 여부를 확인한 뒤 작업해 주세요.'});
+    };
+    document.addEventListener('workspace-entity-scope-change',invalidateScope);
+    const disposePage = event => {
+        if (event?.persisted || disposed) return;
+        disposed = true;lifetime.abort();readSession.dispose();transport.dispose();disclosures.destroy();recoveryDisclosures?.destroy();createAccount.dispose();
+        document.removeEventListener('workspace-entity-scope-change',invalidateScope);
+        document.removeEventListener('company-page-leave',disposePage);
+        window.removeEventListener('beforeunload',unload);
+        window.removeEventListener('pagehide',disposePage);
+    };
+    window.addEventListener('pagehide',disposePage);
+    document.addEventListener('company-page-leave',disposePage);
+    updateDirtyState();
+})();
+</script>
+}

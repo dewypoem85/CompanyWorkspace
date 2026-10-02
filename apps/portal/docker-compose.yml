@@ -1,0 +1,58 @@
+services:
+  company-portal:
+    build: .
+    container_name: company-portal
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5090:8080"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - company-portal-data:/app/data
+      - company-portal-data-keys:/app/data-keys
+    networks:
+      - default
+      - company-services
+    environment:
+      ConnectionStrings__Default: Data Source=/app/data/company-portal.db
+      DataProtection__KeyPath: /app/data-keys
+      Authentication__Google__ClientId: ${GOOGLE_CLIENT_ID}
+      Authentication__Google__ClientSecret: ${GOOGLE_CLIENT_SECRET}
+      Authentication__SessionHours: ${AUTH_SESSION_HOURS:-168}
+      SeedMaster__Email: ${MASTER_EMAIL}
+      SeedMaster__Name: ${MASTER_NAME:-회사 마스터}
+      SeedMaster__HireDate: ${MASTER_HIRE_DATE:-2024-01-01}
+      Systems__Leave__BaseUrl: ${LEAVE_BASE_URL:-https://leave.example.com}
+      Systems__Schedule__BaseUrl: ${SCHEDULE_BASE_URL:-https://schedule.example.com}
+      Systems__Cs__BaseUrl: ${CS_BASE_URL:-https://cs.example.com}
+      Systems__Statistics__BaseUrl: ${STATISTICS_BASE_URL:-https://statistics.example.com}
+      Systems__Sheet__BaseUrl: ${SHEET_BASE_URL:-https://sheet.example.com}
+      Systems__Iap__BaseUrl: ${IAP_BASE_URL:-https://iap.example.com}
+      Sso__Issuer: ${COMPANY_SSO_ISSUER:-company-portal}
+      Sso__SharedSecret: ${COMPANY_SSO_SHARED_SECRET}
+      Notifications__Leave__InternalUrl: http://leave-manager:8080
+      Notifications__Leave__Host: ${LEAVE_INTERNAL_HOST_HEADER:-leave.example.com}
+      Notifications__Schedule__InternalUrl: http://company-schedule:8080
+      Notifications__Schedule__Host: ${SCHEDULE_INTERNAL_HOST_HEADER:-schedule.example.com}
+      Provisioning__Leave__Enabled: ${LEAVE_PROVISIONING_ENABLED:-true}
+      Provisioning__Leave__RequestTimeoutSeconds: ${LEAVE_PROVISIONING_TIMEOUT_SECONDS:-10}
+      Security__TrustForwardedHeadersFromAnyProxy: ${SECURITY_TRUST_ANY_FORWARDER:-true}
+      Push__Enabled: ${PUSH_ENABLED:-false}
+      Push__PollSeconds: ${PUSH_POLL_SECONDS:-30}
+      Push__FirebaseProjectId: ${FIREBASE_PROJECT_ID:-}
+      Push__CredentialPath: ${FIREBASE_CREDENTIAL_PATH:-/run/secrets/company-workspace-firebase-admin.json}
+      # Node fetch uses the URL hostname for internal session validation.
+      AllowedHosts: "${ALLOWED_HOSTS:-company.example.com;localhost;127.0.0.1;[::1]};company-portal"
+
+volumes:
+  company-portal-data:
+    name: company-portal-data
+  company-portal-data-keys:
+    name: company-portal-data-keys
+
+networks:
+  company-services:
+    external: true
+    name: company-services

@@ -1,0 +1,10 @@
+bin/
+obj/
+.env
+*.db
+*.db-shm
+*.db-wal
+/data/backups/
+data-keys/
+.vs/
+.idea/

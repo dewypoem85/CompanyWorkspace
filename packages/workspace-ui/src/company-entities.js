@@ -1,0 +1,92 @@
+/* Shared, progressively enhanced employee/project selectors. Native forms remain authoritative. */
+(() => {
+  'use strict';
+  let context = null, picker = null;
+  const base = new URL(document.currentScript?.src||location.href).origin;
+  const display=window.CompanyEntityDisplay;
+  const urlFor=display.urlFor;
+  const optionDisabled=option=>option.disabled||(option.parentElement?.tagName==='OPTGROUP'&&option.parentElement.disabled);
+  const optionId = (select, option) => option.dataset.companyId || (select.dataset.companyLocal === 'true' ? display.localEmployeeId(option.value) : option.value);
+  function icon(kind, id, name) {
+    const node = document.createElement('span'); node.className = 'cw-entity-avatar';
+    node.dataset.workspaceEntity=kind;node.dataset.workspaceEntityId=String(id??'');node.dataset.workspaceEntityName=String(name??'');
+    display.render(node,{kind,id,name}); return node;
+  }
+  function close() { if (!picker) return; const { dialog, select } = picker; picker = null; dialog.close(); dialog.remove(); select.focus(); }
+  function open(select) {
+    if (select.matches(':disabled') || select.multiple || !['employee','project'].includes(select.dataset.companyPicker)) return;
+    close();
+    const dialog = document.createElement('dialog'); dialog.className = 'cw-entity-picker';
+    const label = select.getAttribute('aria-label') || [...(select.labels?.[0]?.childNodes || [])].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim().slice(0, 50) || '항목 선택';
+    dialog.setAttribute('aria-label', label);
+    const heading = document.createElement('div'); heading.className = 'cw-picker-heading';
+    const title = document.createElement('strong'); title.textContent = label;
+    const dismiss = document.createElement('button'); dismiss.type = 'button'; dismiss.textContent = '닫기'; dismiss.onclick = close; heading.append(title, dismiss);
+    const search = document.createElement('input'); search.type = 'search'; search.placeholder = '이름 또는 초성으로 검색'; search.setAttribute('aria-label', label + ' 검색');
+    const list = document.createElement('div'); list.className = 'cw-picker-options'; list.setAttribute('role', 'listbox'); list.setAttribute('aria-label', label);
+    dialog.append(heading, search, list); document.body.append(dialog); picker = { dialog, select, render };
+    let signature='';
+    function render() {
+      const term = search.value.trim().toLocaleLowerCase();
+      const items=[...select.options].map(option=>({option,value:option.value,id:optionId(select,option),label:option.label,hidden:option.hidden||option.parentElement.hidden,disabled:optionDisabled(option),selected:option.selected}));
+      const next=JSON.stringify([term,items.map(item=>[item.value,item.id,item.label,item.hidden,item.disabled,item.selected,urlFor(select.dataset.companyPicker,item.id)])]);
+      if(next===signature)return;signature=next;
+      const focused=list.contains(document.activeElement)?document.activeElement.dataset.optionValue:null;
+      list.replaceChildren();
+      const matches = window.CompanySearch?.createMatcher(term) || (value => value.toLocaleLowerCase().includes(term));
+      for (const item of items) {
+        const {option}=item;
+        if (item.hidden || !matches(item.label)) continue;
+        const button = document.createElement('button'); button.type = 'button'; button.setAttribute('role', 'option');
+        button.dataset.optionValue=item.value;
+        button.setAttribute('aria-selected', String(item.selected)); button.disabled = item.disabled;
+        const name = document.createElement('span'); name.textContent = item.label;
+        button.append(icon(select.dataset.companyPicker, item.id, item.label), name);
+        button.onclick = () => {
+          if (!select.isConnected || select.matches(':disabled')) { close(); return; }
+          if(![...select.options].includes(option)||option.value!==item.value||optionId(select,option)!==item.id||option.label!==item.label||option.hidden||option.parentElement.hidden||optionDisabled(option)){render();return;}
+          select.value = option.value; select.dispatchEvent(new Event('input', { bubbles:true })); select.dispatchEvent(new Event('change', { bubbles:true })); close(); decorate(select);
+        };
+        list.append(button);
+      }
+      if (!list.children.length) { const empty = document.createElement('p'); empty.textContent = '검색 결과가 없습니다.'; empty.setAttribute('role', 'status'); list.append(empty); }
+      if(focused!==null)([...list.querySelectorAll('button:not(:disabled)')].find(button=>button.dataset.optionValue===focused)||search).focus();
+    }
+    let composing=false;
+    search.addEventListener('compositionstart',()=>{composing=true;});
+    search.addEventListener('compositionend',()=>{composing=false;render();});
+    search.oninput = render;
+    dialog.addEventListener('keydown', event => {
+      // IME Enter confirms a syllable/candidate, not an employee or project.
+      if(composing || event.isComposing || event.keyCode===229)return;
+      const options = [...list.querySelectorAll('button:not(:disabled)')];
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); const i = options.indexOf(document.activeElement); options[i<0?(event.key==='ArrowDown'?0:options.length-1):(i + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length]?.focus(); }
+      if (event.key === 'Enter' && document.activeElement === search) { event.preventDefault(); options[0]?.click(); }
+    });
+    dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
+    dialog.addEventListener('click', event => { if (event.target === dialog) { const r=dialog.getBoundingClientRect(); if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom) close(); } });
+    render(); dialog.showModal(); search.focus();
+  }
+  function decorate(select) {
+    const option = select.selectedOptions[0]; const src = option && urlFor(select.dataset.companyPicker, optionId(select, option));
+    select.classList.toggle('cw-select-icon', !!src); select.style.backgroundImage = src ? `url("${src}")` : '';
+  }
+  function scan() {
+    document.querySelectorAll('select[data-company-picker]').forEach(select => {
+      if (!select.dataset.entityReady) {
+        select.dataset.entityReady = 'true';
+        select.addEventListener('pointerdown', event => { if(event.button === 0 && !select.matches(':disabled') && !select.multiple) { event.preventDefault(); open(select); } });
+        select.addEventListener('keydown', event => { if (!select.multiple && !select.matches(':disabled') && ['Enter',' ','ArrowDown','ArrowUp'].includes(event.key)) { event.preventDefault(); open(select); } });
+        select.addEventListener('change', () => decorate(select));
+      }
+      decorate(select);
+    });
+    if (picker && (!picker.select.isConnected||picker.select.matches(':disabled'))) close();
+    else picker?.render();
+  }
+  const scope=window.CompanyEntityChoices.scopeOf;
+  document.addEventListener('company-context', event => { if(picker && scope(context)!==scope(event.detail)) close(); context=event.detail; scan(); });
+  new MutationObserver(scan).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['disabled','hidden','value','selected','label','data-company-id','data-company-local']});
+  window.CompanyEntities={open,close,refresh:scan};
+  document.addEventListener('reset',()=>setTimeout(scan,0)); scan(); void window.CompanyWorkspace?.refresh();
+})();

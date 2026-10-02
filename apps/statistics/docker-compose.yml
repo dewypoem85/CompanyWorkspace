@@ -1,0 +1,129 @@
+services:
+  game-statistics:
+    build: .
+    container_name: statistics-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3010
+      NODE_ENV: production
+      STATISTICS_CLICKHOUSE_ENABLED: "true"
+      STATISTICS_WORKER_URL: http://statistics-worker:3120
+      CLICKHOUSE_URL: http://statistics-clickhouse:8123
+      CLICKHOUSE_DATABASE: statistics
+      CLICKHOUSE_USER: statistics
+      CLICKHOUSE_PASSWORD: ${COMPANY_SSO_SHARED_SECRET}
+      STATISTICS_INTERNAL_PORT: ${STATISTICS_INTERNAL_PORT:-3110}
+      STATISTICS_SESSION_MINUTES: ${STATISTICS_SESSION_MINUTES:-10080}
+      STATISTICS_DATA_DIR: /app/data
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google-service-account.json
+      STATISTICS_CACHE_MINUTES: ${STATISTICS_CACHE_MINUTES:-10}
+      STATISTICS_DAILY_REFRESH_HOUR_KST: ${STATISTICS_DAILY_REFRESH_HOUR_KST:-6}
+      STATISTICS_RETENTION_DAYS: ${STATISTICS_RETENTION_DAYS:-90}
+      STATISTICS_PRECACHE_DAYS: ${STATISTICS_PRECACHE_DAYS:-7,30,90}
+      STATISTICS_SYNC_LOOKBACK_DAYS: ${STATISTICS_SYNC_LOOKBACK_DAYS:-2}
+      STATISTICS_EVENT_BATTLE_RESULT: ${STATISTICS_EVENT_BATTLE_RESULT:-battle_result}
+      STATISTICS_EVENT_BOSS_ENCOUNTER: ${STATISTICS_EVENT_BOSS_ENCOUNTER:-boss_encounter}
+      STATISTICS_EVENT_BOSS_KILL: ${STATISTICS_EVENT_BOSS_KILL:-boss_kill}
+      AZURE_STATISTICS_STORAGE_ACCOUNT: ${AZURE_STATISTICS_STORAGE_ACCOUNT:-}
+      AZURE_STATISTICS_CONTAINER: ${AZURE_STATISTICS_CONTAINER:-statistics}
+      AZURE_STATISTICS_PREFIX: ${AZURE_STATISTICS_PREFIX:-playfab-analytics/v2}
+      AZURE_STATISTICS_SAS_TOKEN: ${AZURE_STATISTICS_SAS_TOKEN:-}
+    ports:
+      - "127.0.0.1:${PORT:-3010}:3010"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - statistics-data:/app/data
+      - type: bind
+        source: ${STATISTICS_GOOGLE_SERVICE_ACCOUNT_FILE:-C:/dev/docker/private/sheet-google-service-account.json}
+        target: /run/secrets/google-service-account.json
+        read_only: true
+    depends_on:
+      statistics-worker:
+        condition: service_healthy
+    networks:
+      - default
+      - company-services
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3010/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  statistics-worker:
+    build: .
+    container_name: statistics-worker
+    command: ["node", "clickhouse-worker.js"]
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      STATISTICS_WORKER_HOST: 0.0.0.0
+      STATISTICS_WORKER_PORT: 3120
+      STATISTICS_DAILY_REFRESH_HOUR_KST: ${STATISTICS_DAILY_REFRESH_HOUR_KST:-6}
+      STATISTICS_RETENTION_DAYS: ${STATISTICS_RETENTION_DAYS:-90}
+      STATISTICS_SYNC_LOOKBACK_DAYS: ${STATISTICS_SYNC_LOOKBACK_DAYS:-2}
+      CLICKHOUSE_URL: http://statistics-clickhouse:8123
+      CLICKHOUSE_DATABASE: statistics
+      CLICKHOUSE_USER: statistics
+      CLICKHOUSE_PASSWORD: ${COMPANY_SSO_SHARED_SECRET}
+      AZURE_PLAYFAB_LOG_CONTAINER: ${AZURE_PLAYFAB_LOG_CONTAINER:-logs}
+      AZURE_PLAYFAB_LOG_PREFIX: ${AZURE_PLAYFAB_LOG_PREFIX:-data}
+      AZURE_PLAYFAB_LOG_CONCURRENCY: ${AZURE_PLAYFAB_LOG_CONCURRENCY:-6}
+      AZURE_PLAYFAB_READER_THREADS: ${AZURE_PLAYFAB_READER_THREADS:-4}
+      STATISTICS_LEGACY_INDEX_PATH: /app/legacy-data/analytics-index-v1.sqlite
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - statistics-data:/app/legacy-data:ro
+    depends_on:
+      statistics-clickhouse:
+        condition: service_healthy
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3120/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  statistics-clickhouse:
+    image: clickhouse/clickhouse-server:25.8-alpine
+    container_name: statistics-clickhouse
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: statistics
+      CLICKHOUSE_USER: statistics
+      CLICKHOUSE_PASSWORD: ${COMPANY_SSO_SHARED_SECRET}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes:
+      - statistics-clickhouse-data:/var/lib/clickhouse
+      - statistics-clickhouse-logs:/var/log/clickhouse-server
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--user", "statistics", "--password", "${COMPANY_SSO_SHARED_SECRET}", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  statistics-data:
+  statistics-clickhouse-data:
+  statistics-clickhouse-logs:
+
+networks:
+  company-services:
+    external: true
+    name: company-services

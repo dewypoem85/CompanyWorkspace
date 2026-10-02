@@ -1,0 +1,4 @@
+# Add before the existing catch-all. Do not replace other company routes.
+# The tunnel service and product-upload must share company-services.
+- hostname: iap.example.com
+  service: http://product-upload:4180

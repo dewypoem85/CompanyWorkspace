@@ -1,0 +1,29 @@
+@page
+@model CompanyPortal.Pages.Notifications.IndexModel
+<div data-notification-center data-center-owner="@Model.OwnerId">
+<div data-center-state hidden></div>
+<section class="dashboard-hero notification-hero">
+    <div><span class="eyebrow"><span class="eyebrow-dot"></span>Notification center</span><h1>통합 알림센터</h1><p>연차관리와 팀 일정에서 발생한 알림을 최신 순서로 모아 봅니다.</p></div>
+    <div class="notification-summary"><strong>@Model.Feed.UnreadCount</strong><span>읽지 않은 알림</span></div>
+</section>
+@if (Model.Feed.Sources.Any(source => !source.Available))
+{
+    <div class="workspace-alert warning" role="status"><strong>일부 서비스 알림을 불러오지 못했습니다.</strong><span>나머지 서비스의 알림은 정상적으로 표시됩니다.</span></div>
+}
+<button class="cw-button" type="button" data-center-read-all>모두 읽음으로 표시</button>
+<section class="notification-feed" aria-label="통합 알림 목록">
+    @if (Model.Feed.Items.Count == 0)
+    {
+        <div class="notification-empty"><strong>표시할 알림이 없습니다.</strong><p>새로운 업무 알림이 생기면 이곳에 모아서 보여드립니다.</p></div>
+    }
+    @foreach (var item in Model.Feed.Items)
+    {
+        <article class="workspace-notification @(item.IsRead ? "is-read" : "is-unread")">
+            <span class="notification-source source-@item.Source">@item.SourceLabel</span>
+            <div><div class="notification-meta"><span data-notification-type>@item.Type</span><time datetime="@item.CreatedAtUtc.ToString("O")">@item.CreatedAtUtc.AddHours(9).ToString("yyyy.MM.dd HH:mm")</time></div><h2>@item.Title</h2><p>@item.Message</p></div>
+            <a class="button button-secondary button-compact" data-center-open="@item.Source:@item.SourceId" href="@item.Link">상세 보기</a>
+        @if (!item.IsRead) { <button class="cw-button" data-size="compact" type="button" data-center-read="@item.Source:@item.SourceId">읽음 표시</button> }
+        </article>
+    }
+</section>
+</div>

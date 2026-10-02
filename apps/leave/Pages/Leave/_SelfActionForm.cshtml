@@ -1,0 +1,18 @@
+@model LeaveManager.Pages.Leave.SelfActionFormModel
+<form method="post" asp-antiforgery="true" asp-page-handler="@Model.Operation" id="@Model.FormId" class="@(Model.Detail ? "is-hidden" : "")" data-leave-self-action="@Model.Operation">
+    <input type="hidden" name="expectedEmployeeId" value="@Model.Page.CurrentEmployee.Id" />
+    <input type="hidden" name="expectedSnapshot" value="@(Model.Request is null ? "" : LeaveManager.Services.LeaveRequestSnapshot.Compute(Model.Request))" />
+    <input type="hidden" name="expectedStatus" value="@Model.Request?.Status.ToString()" />
+    <input type="hidden" name="displayDates" value="@(Model.Request is null ? "" : LeaveManager.Pages.Leave.SelfActionFormModel.DateLabel(Model.Request))" />
+    <input type="hidden" name="displayReason" value="@Model.Request?.Reason" />
+    <input type="hidden" name="id" id="@Model.InputId" value="@Model.Request?.Id" />
+    <input type="hidden" name="Year" value="@Model.Page.Year" />
+    <input type="hidden" name="Month" value="@Model.Page.Month" />
+    <input type="hidden" name="CalendarView" value="@Model.Page.CalendarView" />
+    <input type="hidden" name="RequestLimit" value="@Model.Page.RequestLimit" />
+    <input type="hidden" name="RequestPage" value="@Model.Page.RequestPage" />
+    <input type="hidden" name="SelfOnly" value="@Model.Page.SelfOnly.ToString().ToLowerInvariant()" />
+    <input type="hidden" name="ShowOthers" value="@Model.Page.ShowOthers.ToString().ToLowerInvariant()" />
+    <input type="hidden" name="ViewEmployeeId" value="@Model.Page.ViewEmployeeId" />
+    @if (!Model.Detail) { <button type="submit" class="cw-button" data-size="compact" disabled="@Model.Page.SelfActionLocked">@(Model.Operation=="WithdrawCancel" ? "취소 요청 철회" : Model.Request?.Status==LeaveManager.Models.LeaveRequestStatus.Pending ? "신청 취소" : "취소 요청")</button> }
+</form>

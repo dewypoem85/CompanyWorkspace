@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">96%</string>
+  <string name="package_id">com.nspg.companyworkspace</string>
+  <string name="start_url">https://company.example.com/</string>
+  <string name="trusted_origins">https://company.example.com,https://schedule.example.com,https://leave.example.com,https://cs.example.com,https://statistics.example.com,https://sheet.example.com,https://iap.example.com</string>
+</resources>

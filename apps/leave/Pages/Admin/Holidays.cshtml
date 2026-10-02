@@ -1,0 +1,108 @@
+@page
+@model LeaveManager.Pages.Admin.HolidaysModel
+
+
+<section class="page-title-row">
+    <div>
+        <p class="eyebrow">Admin</p>
+        <h1>공휴일 관리</h1>
+    </div>
+    <div class="title-actions">
+        <a class="btn btn-secondary" asp-page="Index">관리자 홈</a>
+    </div>
+</section>
+
+<div data-holiday-screen data-year="@Model.Year" data-locked="@Model.Locked.ToString().ToLowerInvariant()">
+@if (!string.IsNullOrWhiteSpace(Model.Error)) { <div class="error">@Model.Error</div> }
+@if (!string.IsNullOrWhiteSpace(Model.Success)) { <div class="success">@Model.Success</div> }
+
+<script type="application/json" data-holiday-snapshot>@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Snapshot()))</script>
+<div data-holiday-state hidden></div>
+<p data-holiday-recheck hidden="@(!Model.Locked)"><a href="/Admin/Holidays?Year=@Model.Year" target="_blank" rel="noopener">새 탭에서 현재 공휴일 확인</a></p>
+<fieldset class="holiday-fields" data-holiday-fields disabled="@Model.Locked">
+<section class="panel">
+    <div class="panel-head">
+        <div>
+            <h2>년도별 공휴일 불러오기</h2>
+            <p>연도 단위로 한국 공휴일을 불러온 뒤, 아래 목록에서 직접 추가/수정/삭제할 수 있습니다.</p>
+        </div>
+    </div>
+
+    <div class="holiday-import-grid">
+        <form method="post" asp-antiforgery="true" asp-page-handler="ImportOnline" class="holiday-import-card" data-holiday-action="ImportOnline">
+            <h3>온라인에서 불러오기</h3>
+            <p class="muted-text">Nager.Date 공휴일 API에서 KR 기준 공휴일을 가져옵니다. 원 공휴일과 대체휴무를 분리 보정합니다. 예: 2024-05-05 어린이날, 2024-05-06 어린이날 대체휴무. 임시공휴일/회사휴무/노동절 등은 누락될 수 있으므로 불러온 뒤 목록을 확인하세요.</p>
+            <label class="cw-form-field">연도
+                <input class="cw-form-control" asp-for="Import.Year" id="online-import-year" type="number" min="2000" max="2100" />
+            </label>
+            <label class="holiday-overwrite-check cw-check-control">
+                <input class="cw-checkbox" asp-for="Import.OverwriteExisting" id="online-import-overwrite" type="checkbox" />
+                같은 날짜가 있으면 이름 덮어쓰기
+            </label>
+            <button class="cw-button" data-variant="primary" type="submit">온라인 불러오기</button>
+        </form>
+
+        <form method="post" asp-antiforgery="true" asp-page-handler="ImportJson" class="holiday-import-card" data-holiday-action="ImportJson">
+            <h3>JSON으로 불러오기</h3>
+            <p class="muted-text">배열, date/name 객체, Nager.Date 형식, 날짜-이름 map 형식을 지원합니다. 직접 JSON 등록은 입력된 항목 기준으로 반영됩니다.</p>
+            <label class="cw-form-field">연도
+                <input class="cw-form-control" asp-for="Import.Year" id="json-import-year" type="number" min="2000" max="2100" />
+            </label>
+            <label class="cw-form-field">JSON
+                <textarea class="cw-form-control" asp-for="Import.JsonText" rows="8" maxlength="20000" placeholder='[{ "date": "2026-01-01", "name": "신정" }, { "date": "2026-03-01", "name": "삼일절" }]'></textarea>
+            </label>
+            <label class="holiday-overwrite-check cw-check-control">
+                <input class="cw-checkbox" asp-for="Import.OverwriteExisting" id="json-import-overwrite" type="checkbox" />
+                같은 날짜가 있으면 이름 덮어쓰기
+            </label>
+            <button class="cw-button" data-variant="primary" type="submit">JSON 등록</button>
+        </form>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="panel-head">
+        <div>
+            <h2>공휴일 직접 추가/수정</h2>
+            <p>같은 날짜가 이미 있으면 공휴일명이 수정됩니다.</p>
+        </div>
+    </div>
+    <form method="post" asp-antiforgery="true" asp-page-handler="Add" class="cw-form-fields" data-holiday-action="Add">
+        <label class="cw-form-field">날짜 <input class="cw-form-control" asp-for="Input.Date" type="date" required /></label>
+        <label class="cw-form-field">이름 <input class="cw-form-control" asp-for="Input.Name" maxlength="100" placeholder="예: 광복절" required /></label>
+        <div class="cw-form-wide"><button class="cw-button" data-variant="primary" type="submit">추가/수정</button></div>
+    </form>
+</section>
+
+<section class="panel">
+    <div class="panel-head">
+        <div>
+            <h2 data-holiday-list-title>@Model.Year 년 공휴일</h2>
+            <p>화면을 열거나 저장할 때 확인한 공휴일 목록입니다.</p>
+        </div>
+        <form method="get" class="holiday-year-filter" data-holiday-year-form>
+            <label class="cw-form-field">연도 <input class="cw-form-control" type="number" name="Year" value="@Model.Year" min="2000" max="2100" /></label>
+            <button class="cw-button" type="submit">조회</button>
+        </form>
+    </div>
+    <div class="cw-table-scroll" tabindex="0" role="region" aria-label="공휴일 목록">
+        <table class="cw-data-table holiday-table">
+            <thead><tr><th>날짜</th><th>공휴일명</th><th>관리</th></tr></thead>
+            <tbody data-holiday-rows>
+            @foreach (var h in Model.Holidays)
+            {
+                <partial name="_HolidayRow" model="h" />
+            }
+            @if (Model.Holidays.Count == 0)
+            {
+                <tr><td colspan="3" class="muted-text">등록된 공휴일이 없습니다.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</section>
+</fieldset>
+<template data-holiday-row-template><partial name="_HolidayRow" model="@(new LeaveManager.Models.Holiday())" /></template>
+<template data-holiday-empty-template><tr><td colspan="3" class="muted-text">등록된 공휴일이 없습니다.</td></tr></template>
+</div>
+@section Scripts { <script type="module" src="~/js/holiday-settings.js" asp-append-version="true"></script> }

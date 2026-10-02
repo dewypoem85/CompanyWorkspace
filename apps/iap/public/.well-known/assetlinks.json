@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.use_as_origin"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.nspg.companyworkspace",
+      "sha256_cert_fingerprints": [
+        "21:0E:DC:CB:2D:69:2D:B4:BA:FA:DA:97:08:2C:13:C5:FE:61:9E:83:0E:3D:F8:8E:05:0D:6B:B5:58:2B:B6:3F"
+      ]
+    }
+  }
+]

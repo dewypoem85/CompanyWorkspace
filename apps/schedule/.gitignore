@@ -1,0 +1,16 @@
+node_modules/
+dist/
+server/bin/
+server/obj/
+server/wwwroot/
+tests/bin/
+tests/obj/
+integration-tests/bin/
+integration-tests/obj/
+data/
+backups/
+.cache/
+.env
+*.db*
+*.log
+__pycache__/

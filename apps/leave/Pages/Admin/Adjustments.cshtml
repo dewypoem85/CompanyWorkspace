@@ -1,0 +1,217 @@
+@page
+@model LeaveManager.Pages.Admin.AdjustmentsModel
+@using LeaveManager.Pages.Admin
+@using LeaveManager.Models
+<link rel="stylesheet" href="~/css/leave-grants.css" asp-append-version="true" />
+
+
+<div data-grant-screen data-actor="@Model.ActorId" data-actor-name="@Model.ActorName" data-today="@Model.Today" data-reason-required="@Model.ReasonRequired.ToString().ToLowerInvariant()" data-can-delete="@Model.CanDelete.ToString().ToLowerInvariant()">
+<div class="page-title-row">
+    <div>
+        <p class="eyebrow">Admin</p>
+        <h1>직원 연차 추가/삭제</h1>
+        <p class="muted-text">누락된 연차 발생분을 직접 추가하거나, 잘못 생성된 미사용 발생분을 삭제합니다. 전년도 잔여·초과분 보정도 여기서 처리합니다.</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div data-workspace-state="error" data-state-title="발생분 내역을 확인해 주세요." data-state-message="@Model.Error" data-locked="@Model.Locked.ToString().ToLowerInvariant()"><p>@Model.Error</p></div>
+}
+@if (!string.IsNullOrWhiteSpace(Model.Success))
+{
+    <div data-workspace-state="success" data-state-message="@Model.Success"><p>@Model.Success</p></div>
+}
+
+@if (Model.Locked)
+{
+    <section class="panel">
+        <h2>입력 원문 보관</h2>
+        <p>아래 입력은 저장 확인을 의미하지 않습니다. 최신 내역을 새 탭에서 확인한 후 작업을 다시 시작해 주세요.</p>
+        <pre class="adjustment-raw-draft">@Model.RawDraft</pre>
+        <a href="@Url.Page("/Admin/Adjustments")" target="_blank" rel="noopener">최신 발생분 내역 확인</a>
+    </section>
+}
+else
+{
+<p data-grant-recheck hidden>현재 목록은 조회 당시의 내역입니다. <a asp-page="/Admin/Adjustments" asp-route-employeeId="@Model.EmployeeId" target="_blank" rel="noopener">새 탭에서 최신 발생분 확인</a></p>
+<section class="panel">
+    <div class="panel-head">
+        <div>
+            <h2>연차 개수 보정</h2>
+            <p>전년도 초과 사용 또는 잔여분을 현재 연차년도에 더하거나 차감합니다. 음수 입력이 가능합니다.</p>
+        </div>
+    </div>
+
+    <form method="post" asp-antiforgery="true" data-grant-form="Adjust">
+        <div data-grant-read-state hidden></div><div data-grant-state hidden></div>
+        <fieldset class="cw-form-fields">
+        <label class="cw-form-field">직원
+            <select class="cw-form-control" asp-for="EmployeeId" id="employeeSelect" data-company-picker="employee" data-company-local="true">
+                @foreach (var e in Model.Employees)
+                {
+                    <option value="@e.Id" data-default-date="@LeaveManager.Pages.Admin.AdjustmentsModel.GetCurrentLeaveYearStart(e.HireDate, LeaveManager.Services.AppTime.Today).ToString("yyyy-MM-dd")">
+                        @e.Name (@e.Email) @(e.IsActive ? "" : "- 퇴사")
+                    </option>
+                }
+            </select>
+        </label>
+        <label class="cw-form-field">적용 기준일
+            <input class="cw-form-control" asp-for="EffectiveDate" type="date" />
+            <small>보통 해당 직원의 올해 입사기념일을 사용합니다.</small>
+        </label>
+        <label class="cw-form-field">보정 일수
+            <input class="cw-form-control" asp-for="Days" type="number" step="0.5" required />
+            <small>증가: 2 / 차감: -1.5</small>
+        </label>
+        <label class="cw-form-field">사유
+            <input class="cw-form-control" asp-for="Note" placeholder="예: 2025년 잔여 2일 이월 / 2025년 초과 사용 1일 차감" required="@Model.ReasonRequired" />
+        </label>
+        <div class="cw-form-wide grant-actions"><button class="cw-button" data-variant="primary" type="submit">보정 적용</button><span data-grant-spent hidden>이미 처리한 기준값입니다. 최신 내역을 확인하거나 다른 발생분을 선택해 주세요.</span></div>
+        </fieldset>
+    </form>
+</section>
+
+<section class="panel">
+    <div class="panel-head">
+        <div>
+            <h2>누락 연차 발생분 직접 추가</h2>
+            <p>자동 생성되지 않았거나 이전 기록 이관 과정에서 빠진 발생분을 직접 추가합니다. 추가 내역은 감사 로그에 남습니다.</p>
+        </div>
+    </div>
+
+    <form method="post" asp-antiforgery="true" asp-page-handler="AddGrant" data-grant-form="AddGrant">
+        <div data-grant-read-state hidden></div><div data-grant-state hidden></div>
+        <fieldset class="cw-form-fields">
+        <label class="cw-form-field">직원
+            <select class="cw-form-control" asp-for="AddEmployeeId" id="grantEmployeeSelect" data-company-picker="employee" data-company-local="true">
+                @foreach (var e in Model.Employees)
+                {
+                    <option value="@e.Id" data-default-date="@LeaveManager.Pages.Admin.AdjustmentsModel.GetCurrentLeaveYearStart(e.HireDate, LeaveManager.Services.AppTime.Today).ToString("yyyy-MM-dd")">
+                        @e.Name (@e.Email) @(e.IsActive ? "" : "- 퇴사")
+                    </option>
+                }
+            </select>
+        </label>
+        <label class="cw-form-field">발생 유형
+            <select class="cw-form-control" asp-for="AddGrantType">
+                <option value="Manual">수동/보정</option>
+                <option value="Annual">연차</option>
+                <option value="Monthly">월차</option>
+                <option value="CarriedOver">이월</option>
+                <option value="Imported">가져오기</option>
+            </select>
+        </label>
+        <label class="cw-form-field">발생일
+            <input class="cw-form-control" asp-for="AddGrantedDate" type="date" required />
+        </label>
+        <label class="cw-form-field">만료일
+            <input class="cw-form-control" asp-for="AddExpiresDate" type="date" />
+            <small>비워두면 발생일 기준 1년 뒤 전날로 처리됩니다.</small>
+        </label>
+        <label class="cw-form-field">일수
+            <input class="cw-form-control" asp-for="AddDays" type="number" step="0.5" required />
+        </label>
+        <label class="cw-form-field">사유
+            <input class="cw-form-control" asp-for="AddNote" placeholder="예: 누락된 2025년 연차 발생분 추가" required="@Model.ReasonRequired" />
+        </label>
+        <div class="cw-form-wide grant-actions"><button class="cw-button" data-variant="primary" type="submit">발생분 추가</button><span data-grant-spent hidden>이미 처리한 기준값입니다. 최신 내역을 확인하거나 다른 발생분을 선택해 주세요.</span></div>
+        </fieldset>
+    </form>
+</section>
+
+<section class="panel">
+    <div class="panel-head">
+        <div>
+            <h2>직원별 연차 발생분 삭제</h2>
+            <p>잘못 생성된 발생분을 삭제합니다. 이미 신청에 배정되었거나 소멸·이월·보상 처리된 발생분은 삭제하지 않고 보정 차감을 사용해야 합니다.</p>
+        </div>
+        <form method="get" class="grant-filter" data-grant-filter>
+            <label class="cw-form-field">직원
+            <select class="cw-form-control" name="employeeId" data-company-picker="employee" data-company-local="true">
+                @foreach (var e in Model.Employees)
+                {
+                    <option value="@e.Id" selected="@(e.Id == Model.EmployeeId)">@e.Name (@e.Email) @(e.IsActive ? "" : "- 퇴사")</option>
+                }
+            </select></label><button class="cw-button" type="submit">발생분 조회</button>
+        </form>
+    </div>
+
+    <p data-grant-list-label><span class="cw-entity-avatar" data-company-local-employee="@Model.EmployeeId">?</span><span data-grant-list-name>조회 직원: @Model.Employees.FirstOrDefault(x => x.Id == Model.EmployeeId)?.Name</span></p>
+    <div data-grant-list-state hidden></div>
+    <div data-grant-empty hidden></div>
+    <div class="cw-table-scroll">
+        <table class="cw-data-table">
+            <thead>
+            <tr>
+                <th>유형</th>
+                <th>발생일</th>
+                <th>만료일</th>
+                <th>발생</th>
+                <th>신청 배정</th>
+                <th>정산</th>
+                <th>남은 수량</th>
+                <th>메모</th>
+                <th>관리</th>
+            </tr>
+            </thead>
+            <tbody data-grant-list="@Model.EmployeeId">
+            @foreach (var row in Model.GrantRows)
+            {
+                <partial name="_GrantRow" model="@(new GrantRowView(row, Model.CanDelete, Model.ReasonRequired))" />
+            }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="panel-head">
+        <div>
+            <h2>최근 보정 내역</h2>
+            <p>같은 직원의 같은 기준일 보정은 하나의 보정 발생분으로 합산됩니다. 세부 변경자는 감사 로그에서 확인할 수 있습니다.</p>
+        </div>
+    </div>
+    <div class="cw-table-scroll">
+        <table class="cw-data-table">
+            <thead>
+            <tr>
+                <th>직원</th>
+                <th>기준일</th>
+                <th>만료일</th>
+                <th>보정 합계</th>
+                <th>현재 사용 가능</th>
+                <th>메모</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model.History)
+            {
+                var g = row.Grant;
+                <tr>
+                    <td><span class="cw-entity-avatar" data-company-local-employee="@g.Employee.Id">@g.Employee.Name[0]</span>@g.Employee.Name<br /><small>@g.Employee.Email</small></td>
+                    <td>@g.GrantedDate</td>
+                    <td>@g.ExpiresDate</td>
+                    <td class="@(g.GrantedDays < 0 ? "text-danger" : "text-ok")">@(g.GrantedDays > 0 ? "+" : "")@g.GrantedDays</td>
+                    <td>@row.CurrentAvailable</td>
+                    <td><pre>@g.Note</pre></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+}
+</div>
+@if (!Model.Locked)
+{
+    <script type="application/json" data-grant-initial>@Html.Raw(Model.InitialCatalogJson)</script>
+    <template data-grant-row-template>
+        <partial name="_GrantRow" model="@(new GrantRowView(new GrantManageRow(new LeaveGrant(), 0, 0, 0), Model.CanDelete, Model.ReasonRequired))" />
+    </template>
+}
+@section Scripts {
+    <script src="~/js/leave-grants-contract.js" asp-append-version="true"></script>
+    <script src="~/js/leave-grants.js" asp-append-version="true"></script>
+}

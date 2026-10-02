@@ -1,0 +1,179 @@
+.toolbar { flex-wrap: wrap; gap: 14px; }
+.week-nav { flex-wrap: wrap; gap: 7px; }
+.week-nav strong { font-size: .85rem; }
+.timeline-options { display: flex; gap: 12px; }
+.timeline-options .cw-check-control { font-size: .8rem; white-space: nowrap; }
+.timeline-options select { color: var(--navy); }
+.range-board .week-head, .range-board .timeline-row, .range-board .milestone-row { min-width: var(--board-min-width); }
+.range-board .day-header { flex-direction: column; justify-content: center; gap: 3px; padding: 7px 2px; min-height: 64px; }
+.range-board .day-header b { font-size: .8rem; }
+.range-board .week-start { border-left: 2px solid #c2cde1; }
+.range-board .milestone-cell { min-width: 0; padding: 5px 4px; min-height: 32px; }
+.range-board .milestone-chip {display: block;width: 100%;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;font-size: .7rem}
+.range-board .milestone-label { padding: 8px 12px; }
+.range-board .timeline-task { min-width: 0; }
+.range-board .person-info { min-width: 0; flex: 1; position: relative; }
+.range-board .person-info b { overflow-wrap: anywhere; }
+
+.collapse-people { margin-left: auto; }
+.compact-board .timeline-row { min-height: var(--row-height); }
+.compact-board .person-label:not(.milestone-label) { padding: 10px 8px; gap: 7px; align-items: center; }
+.compact-board .person-label .avatar { width: 26px; height: 26px; font-size: .7rem; }
+.compact-board .person-info b { font-size: .8rem; }
+.compact-board .person-info small { font-size: .65rem; margin-top: 4px; }
+.compact-board .expand-person { margin-top:4px; }
+.compact-board .expanded-person .person-label { align-items: flex-start; }
+.compact-board .timeline-task { align-self: center; margin: 3px; }
+.compact-board .timeline-task .task-card {min-height:32px;height: 30px;padding: 4px 6px;margin: 0;display: block;text-align: left;border-radius: 4px}
+.compact-board .task-card strong { display: block; font-size: .75rem; line-height: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compact-board .task-card .task-project, .compact-board .task-card .card-meta { display: none; }
+.compact-board .task-card.done strong { color: #718c7e; }
+.compact-board .absence-slot { padding: 2px 3px; }
+.compact-board .absence { padding: 2px; font-size: .6rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.compact-board .no-schedule { align-self: center; padding: 8px 12px; font-size: .7rem; }
+.weekend-note { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: .8rem; color: var(--muted); margin: 12px 0; }
+.weekend-note button { padding: 4px 8px; font-size: .75rem; }
+.compact-mobile .mobile-person { padding: 8px 0; }
+.compact-mobile .task-card {padding: 6px 8px;margin-bottom: 3px;gap: 3px}
+.compact-mobile .task-card .task-project, .compact-mobile .task-card .card-meta { display: none; }
+.compact-mobile .task-card strong { font-size: .8rem; }
+@media (max-width: 600px) {
+  .week-nav { width: 100%; }
+  .week-nav strong { font-size: .75rem; }
+  .week-nav button { padding: 6px 8px; }
+  .timeline-options { gap: 16px; }
+}
+.avatar { flex-shrink:0; overflow:hidden; }
+.avatar img { width:100%; height:100%; object-fit:cover; border-radius:inherit; display:block; }
+
+/* Non-working days retain their meaning in both themes; today is an outline. */
+:root { --calendar-red:var(--cw-sunday); --calendar-red-bg:var(--cw-sunday-bg); --calendar-red-head:var(--cw-sunday-head); --calendar-blue:var(--cw-saturday); --calendar-blue-bg:var(--cw-saturday-bg); --calendar-blue-head:var(--cw-saturday-head); --calendar-today:var(--cw-accent); }
+.calendar-saturday { --day-ink:var(--calendar-blue); --day-bg:var(--calendar-blue-bg); --day-head:var(--calendar-blue-head); }
+.calendar-sunday,.calendar-holiday { --day-ink:var(--calendar-red); --day-bg:var(--calendar-red-bg); --day-head:var(--calendar-red-head); }
+.range-board :is(.day-header,.timeline-background,.milestone-cell):is(.calendar-saturday,.calendar-sunday,.calendar-holiday),.mobile-week .mobile-day:is(.calendar-saturday,.calendar-sunday,.calendar-holiday) { background:var(--day-bg); }
+.range-board .day-header:is(.calendar-saturday,.calendar-sunday,.calendar-holiday) { background:var(--day-head); border-top:3px solid var(--day-ink); }
+.range-board .day-header:is(.calendar-saturday,.calendar-sunday,.calendar-holiday) :is(span,b),.mobile-week .mobile-day:is(.calendar-saturday,.calendar-sunday,.calendar-holiday) h2 { color:var(--day-ink); }
+.range-board .day-header.today { box-shadow:inset 0 3px var(--calendar-today),inset 2px 0 var(--calendar-today),inset -2px 0 var(--calendar-today); }
+.range-board :is(.timeline-background,.milestone-cell).today { box-shadow:inset 2px 0 var(--calendar-today),inset -2px 0 var(--calendar-today); }
+.range-board .day-header .holiday-name { font-size:.65rem; line-height:1.3; font-weight:600; text-align:center; width:100%; overflow-wrap:anywhere; padding:2px; }
+.mobile-week .mobile-day .holiday-name { font-size:.8rem; font-weight:600; }
+.mobile-week .mobile-day:is(.calendar-saturday,.calendar-sunday,.calendar-holiday) { border-left:4px solid var(--day-ink); }
+.mobile-week .mobile-day.today { outline:2px solid var(--calendar-today); outline-offset:-2px; }
+.calendar-legend { display:flex; flex-wrap:wrap; gap:16px; margin:0 0 10px; font-size:.75rem; color:var(--muted); }
+.calendar-legend span { display:inline-flex; align-items:center; gap:6px; }
+.calendar-legend span::before { content:''; width:10px; height:10px; border-radius:3px; background:var(--calendar-red-head); border:1px solid var(--calendar-red); }
+.calendar-legend .legend-saturday::before { background:var(--calendar-blue-head); border-color:var(--calendar-blue); }
+.calendar-legend .legend-today::before { background:transparent; border:2px solid var(--calendar-today); }
+
+/* Department tint and project borders carry separate meanings in both themes. */
+:root { --schedule-surface:var(--cw-surface); --milestone-surface:var(--cw-warning-bg); }
+.timeline-options { flex-wrap:wrap; align-items:center; }
+.timeline-options .cw-range-control { width:164px; max-width:100%; }
+.timeline-scroll-controls { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:6px 0 12px; }
+.timeline-scroll-controls span { font-size:.75rem; color:var(--muted); text-align:center; }
+.timeline-scroll-controls button { padding:6px 10px; font-size:.75rem; }
+.range-board { max-height:calc(100dvh - 260px); min-height:320px; overflow-anchor:none; overscroll-behavior-x:contain; scrollbar-gutter:stable; }
+.range-board:focus-visible { outline:3px solid var(--blue); outline-offset:2px; }
+.range-board .week-head { position:sticky; top:0; z-index:12; height:88px; }
+.range-board .day-header,.range-board .corner { height:88px; }
+.range-board .corner { z-index:14; }
+.range-board .milestone-row { position:sticky; top:88px; z-index:10; background:var(--milestone-surface); border-bottom:2px solid #d7aa41; }
+.range-board .milestone-cell,.range-board .milestone-label { background:var(--milestone-surface); min-height:76px; }
+.range-board .milestone-label { align-items:center; font-size:.85rem; font-weight:800; border-right:2px solid #d7aa41; }
+.milestone-type { display:inline-flex; align-items:center; justify-content:space-between; gap:6px; width:100%; min-width:0; border-radius:4px; padding:2px 6px; background:#657185; color:#fff; font-size:.7rem; font-weight:800; white-space:nowrap; }
+.milestone-type .milestone-countdown { margin-left:auto; flex:0 1 auto; flex-wrap:nowrap; justify-content:flex-end; gap:4px; min-width:0; color:inherit; font-size:.62rem; font-weight:700; }
+.milestone-type.review { background:#ac5c09; }
+.milestone-type.update { background:#146db5; }
+.range-board .milestone-chip,.mobile-week .milestone-chip {display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:4px;padding:7px;margin:2px 0 5px;border-width:2px;border-style:solid;white-space:normal;min-height:60px}
+.milestone-chip strong { font-size:.8rem; line-height:1.45; overflow-wrap:anywhere; }
+.milestone-summary { display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; font-size:.7rem; color:var(--muted); width:100%; }
+.range-board .timeline-row { min-height:var(--row-height); }
+.range-board .timeline-background { background:color-mix(in srgb,var(--department-color) 7%,var(--schedule-surface)); }
+.range-board .timeline-row .person-label,.mobile-person { background:color-mix(in srgb,var(--department-color) 13%,var(--schedule-surface)); border-left:4px solid var(--department-color); }
+.range-board .timeline-background:is(.calendar-saturday,.calendar-sunday,.calendar-holiday) { background:color-mix(in srgb,var(--department-color) 5%,var(--day-bg)); }
+html .app button.task-card,html .app .period-task button.task-card {border-width:2px;border-style:solid}
+html .app button.task-card.done {border-style:solid}
+.compact-board .timeline-task .task-card {height:calc(var(--row-height) - 8px);min-height:calc(var(--row-height) - 8px);display:flex;justify-content:center;overflow:hidden;padding:3px 6px}
+.compact-board .task-card strong { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:20px; max-height:20px; }
+.compact-board .person-label:not(.milestone-label) { padding:4px 6px; }
+.compact-board .timeline-row:not(.expanded-person) .person-info { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:16px 18px; column-gap:5px; align-items:center; }
+.compact-board .timeline-row:not(.expanded-person) .person-info b { grid-column:1 / -1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:16px; }
+.compact-board .timeline-row:not(.expanded-person) .person-info small { grid-column:1; grid-row:2; min-width:0; margin-top:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:16px; }
+.compact-board .timeline-row:not(.expanded-person) .person-info .expand-person { grid-column:2; grid-row:2; align-self:center; min-height:18px; height:18px; margin:0; padding:0 5px; font-size:.65rem; line-height:16px; }
+.calendar-legend .legend-planning::before { background:#b7791630; border-color:#b77916; }
+.calendar-legend .legend-development::before { background:#3874c930; border-color:#3874c9; }
+.calendar-legend .legend-art::before { background:#9663c430; border-color:#9663c4; }
+.assignment-notice { padding:10px 12px; border-radius:6px; background:color-mix(in srgb,var(--blue) 10%,var(--schedule-surface)); font-size:.8rem; }
+@media (max-width:600px) {
+  .timeline-scroll-controls { flex-wrap:wrap; }
+  .timeline-scroll-controls span { order:3; width:100%; }
+  .timeline-options { gap:10px; }
+}
+
+.app .range-board .milestone-cell,.app .range-board .milestone-label { background:var(--milestone-surface); }
+.milestone-chip strong { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.range-board .milestone-cell { max-height:172px; overflow-y:auto; }
+.dense-milestones .milestone-chip {padding:3px 2px;gap:3px}
+.dense-milestones .milestone-chip strong { font-size:.65rem; line-height:1.4; }
+.dense-milestones .milestone-type { font-size:.6rem; padding:2px; max-width:100%; white-space:normal; }
+.dense-milestones .milestone-summary { display:none; }
+.dense-milestones .day-header b { font-size:.7rem; }
+
+
+.schedule-date-help { font-size:.8rem; line-height:1.5; margin:8px 0 16px; }
+.timeline-task .task-card {min-width:0;flex:1}
+.release-toolbar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.release-toolbar label { flex:0 1 28rem; max-width:100%; }
+.release-toolbar select { flex:1; min-width:0; max-width:100%; }
+.release-toolbar > button { flex:none; white-space:nowrap; }
+.release-summary { display:flex; flex-wrap:wrap; gap:28px; padding:20px; border:1px solid var(--line); border-radius:10px; background:var(--schedule-surface); margin-bottom:16px; }
+.release-summary div { display:flex; flex-direction:column; gap:6px; }
+.release-summary small { color:var(--muted); font-size:.75rem; }
+.release-summary strong { font-size:1.4rem; }
+.release-list { display:grid; gap:12px; }
+.release-card-heading { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+.release-card-heading strong { font-size:1.15rem; }
+.release-card time { margin-left:auto; color:var(--muted); font-size:.8rem; }
+.release-card-action { justify-self:end; color:var(--accent); font-size:.82rem; font-weight:700; }
+.release-notes-preview { white-space:pre-wrap; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; line-height:1.6; }
+.release-issue { color:var(--cw-danger); white-space:pre-wrap; overflow-wrap:anywhere; font-size:.85rem; }
+html body .release-fields.cw-form-fields { grid-template-columns:minmax(0,1fr); padding:0; }
+.version-numbers { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.release-history { margin-top:28px; border-top:1px solid var(--line); padding-top:20px; }
+.release-history article { border:1px solid var(--line); border-radius:7px; padding:12px; margin-top:12px; font-size:.8rem; }
+.release-history [data-cw-disclosure] { margin:12px 0; }
+.release-history .body-text { margin:12px 0; }
+
+.release-guide { color:var(--muted); line-height:1.7; font-size:.85rem; }
+.release-guide strong { color:var(--cw-danger); }
+.release-table-scroll { border:1px solid var(--cw-line); border-radius:8px; background:var(--cw-surface); }
+.release-table { border-collapse:collapse; width:100%; min-width:660px; }
+.release-table :is(th,td) { padding:12px; text-align:left; vertical-align:top; border-bottom:1px solid var(--cw-line); }
+.release-table th:nth-child(-n+2) { width:110px; }
+.release-table th:nth-child(3) { width:150px; }
+.release-table td small { display:block; margin-top:5px; }
+.release-table .version-summary { white-space:pre-wrap; line-height:1.6; overflow-wrap:anywhere; }
+.series-actions { display:flex; flex-wrap:wrap; gap:10px; margin:4px 0 12px; }
+.release-table td.series-details { padding:0; }
+.series-details .cw-table-detail { padding:12px; }
+.series-details .release-card { width:100%; margin:10px 0; grid-template-columns:minmax(0,1fr); }
+
+.milestone-type.prototype { background:#7941b3; }
+.milestone-project { display:inline-flex; align-items:center; gap:5px; max-width:100%; min-width:0; vertical-align:middle; font-size:.75rem; font-weight:700; color:var(--navy); }
+.milestone-project .cw-entity-avatar { width:18px; height:18px; flex:0 0 18px; border-radius:4px; font-size:10px; }
+.milestone-project-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.milestone-chip .milestone-project { width:100%; }
+.milestone-chip-heading { display:flex; flex-direction:column; align-items:stretch; gap:4px; width:100%; min-width:0; }
+.milestone-chip-heading .milestone-project { width:100%; }
+.settings-list .milestone-project { max-width:200px; }
+.dense-milestones .milestone-project { flex-direction:column; align-items:flex-start; gap:2px; font-size:.6rem; }
+.dense-milestones .milestone-project-name { max-width:100%; }
+
+.week-nav .date-range-button { grid-template-columns:minmax(0,1fr); justify-items:start; min-width:0; }
+.date-range-button span { font-size:.75rem; color:var(--cw-muted); }
+.date-navigation-dialog { width:min(420px,calc(100vw - 32px)); box-sizing:border-box; }
+.date-navigation-dialog h2 { font-size:1.15rem; margin:0 0 12px; }
+.date-navigation-dialog p { color:var(--muted); font-size:.85rem; line-height:1.7; }
+.date-navigation-dialog .form-actions { margin-bottom:0; }
+@media(max-width:480px) { .week-nav .date-range-button strong { font-size:.8rem; } }
+.legacy-releases{margin:24px 0;border:1px solid var(--line);border-radius:8px;padding:16px}.legacy-releases summary{cursor:pointer;font-weight:700}.legacy-releases article{border-top:1px solid var(--line);padding:16px 0}.legacy-releases header{display:flex;justify-content:space-between;gap:12px;font-size:.8rem;color:var(--muted)}.legacy-releases .body-text{margin:8px 0}.release-source{font-size:.8rem}

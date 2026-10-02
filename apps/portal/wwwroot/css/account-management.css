@@ -1,0 +1,40 @@
+/* Employee creation and editing share the same control sizing and theme tokens. */
+.metric-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+.metric-grid small { word-break: keep-all; }
+.metric-grid article { background: var(--cw-surface); border-color: var(--cw-line); color: var(--cw-text); }
+.metric-grid small, .metric-grid article div > span { color: var(--cw-muted); }
+.metric-blue { background: var(--cw-accent-soft); color: var(--cw-accent); }
+.metric-green { background: var(--cw-success-bg); color: var(--cw-success); }
+.metric-violet { background: var(--cw-violet-bg); color: var(--cw-violet); }
+.metric-amber { background: var(--cw-warning-bg); color: var(--cw-warning); }
+.metric-cyan { background: var(--cw-info-bg); color: var(--cw-info); }
+.metric-slate { background: var(--cw-raised); color: var(--cw-text-soft); }
+.account-search { width: min(320px, 100%); }
+.organization-filter > .cw-form-field { flex: 1 1 200px; max-width: 360px; }
+[data-account-field] { position: relative; min-width: 0; }
+.cw-form-fields > [data-account-field="Permissions"] { grid-column: 1 / -1; }
+.account-projects { grid-column: 1 / -1; margin: 0; min-width: 0; }
+.account-privacy { grid-column: 1 / -1; margin: 0; }
+.account-privacy small, .visibility-note { display: block; margin-top: 4px; color: var(--cw-muted); font-size: 12px; font-weight: 400; }
+.account-visibility { white-space: nowrap; font-size: 12px; color: var(--cw-text); }
+.account-visibility input { accent-color: var(--primary); }
+.access-table-wrap { max-width: 100%; background: var(--cw-surface); border-color: var(--cw-line); }
+.access-table th { background: var(--cw-raised); color: var(--cw-muted); }
+.access-table th, .access-table td { border-color: var(--cw-line); }
+.access-table th:nth-child(3) { min-width: 145px; }
+html[data-theme] .access-matrix-form .access-row { background: var(--cw-surface); }
+html[data-theme] .access-matrix-form .access-row.readonly, html[data-theme] .access-matrix-form .access-row.shared-account-row { background: var(--cw-raised); }
+html[data-theme] .access-matrix-form .access-row:hover { background: var(--cw-hover); }
+html[data-theme] .access-matrix-form .access-row.is-dirty { background: var(--cw-active); box-shadow: inset 3px 0 var(--primary); }
+html[data-theme] .access-matrix-form .matrix-detail-row td { background: var(--cw-raised); }
+.access-matrix-form .permission-switch { min-width: 62px; }
+@media (max-width: 640px) {
+  .account-search { width: 100%; }
+  .organization-filter > .cw-form-field { max-width: none; }
+}
+.html-account-draft { margin-block: 16px; min-width: 0; }
+.html-account-draft h3 { color: var(--cw-text); font-size: 1rem; }
+.html-account-draft dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; }
+.html-account-draft dt { color: var(--cw-muted); }
+.html-account-draft dd { margin: 4px 0 0; }
+.html-account-draft pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--cw-text); font: inherit; }

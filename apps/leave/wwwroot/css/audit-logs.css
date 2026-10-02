@@ -1,0 +1,15 @@
+/* Audit values and layout are local; controls, disclosure and state are shared. */
+#auditLogsArea .audit-search-form { align-items:end; }
+#auditLogsArea .audit-actor { display:inline-flex; align-items:center; gap:8px; max-width:100%; }
+#auditLogsArea .audit-detail-row[hidden] { display:none!important; }
+#auditLogsArea .audit-detail-row > td { padding:0!important; background:var(--cw-raised); }
+#auditLogsArea .audit-detail-panel { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr)); gap:16px; padding:18px 20px; border-top:1px solid var(--cw-line); }
+#auditLogsArea .audit-detail-panel section { min-width:0; }
+#auditLogsArea .audit-detail-panel h4 { margin:0 0 8px; font-size:14px; }
+#auditLogsArea .audit-detail-panel pre { margin:0; padding:12px; border:1px solid var(--cw-line); border-radius:8px; background:var(--cw-surface); color:var(--cw-text); white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.5; }
+#auditLogsArea .audit-summary-row:has([aria-expanded="true"]) { background:var(--cw-active); }
+#auditLogsState { margin-bottom:16px; }
+@media(max-width:720px) {
+  #auditLogsArea .audit-detail-panel { padding:12px; }
+  html body #auditLogsArea .pager .cw-button { width:100%; }
+}

@@ -1,0 +1,32 @@
+import type {WorkspaceStateProps} from './workspace-state';
+export type WriteOutcome='saved'|'conflict'|'invalid'|'denied'|'unknown'|'scope-changed'|'disposed'|'not-sent';
+export type WriteResult={saved:boolean;outcome:WriteOutcome};
+export type WriteContext={signal:AbortSignal;isCurrent:()=>boolean};
+export type FormLease={signal:AbortSignal;readonly current:boolean;markSent:()=>boolean;finish:(outcome:'saved'|'conflict'|'invalid'|'cancelled'|'unknown')=>boolean};
+export type WorkspaceFormSession={
+  readonly pending:boolean;readonly invalid:boolean;readonly revision:number;
+  track:(owner:string,hasDraft?:()=>boolean)=>()=>void;
+  blocked:(owner:string,resources?:string[])=>boolean;
+  begin:(owner:string,resources?:string[])=>FormLease|null;
+  hasDraftExcept:(owner:string)=>boolean;subscribe:(listener:()=>void)=>()=>void;
+  invalidate:()=>void;recoverScope:()=>boolean;dispose:()=>void;
+};
+export type WriteTransportOptions={
+  onState:(state:WorkspaceStateProps)=>void;
+  onSaved:(value:unknown,sent:unknown,context:WriteContext)=>void|Promise<void>;
+  onSettled?:(saved:boolean,outcome:WriteOutcome)=>void;
+  onConflict?:()=>void;isConnected?:()=>boolean;timeoutMs?:number;
+};
+export type WorkspaceWriteTransport={
+  readonly busy:boolean;
+  send:(request:({url:string;method:'POST'|'PUT'|'PATCH'|'DELETE';json:unknown;formData?:never}|{url:string;method:'POST';formData:FormData;json?:never})&{headers?:Record<string,string>;signal?:AbortSignal})=>Promise<WriteResult>;
+  dispose:()=>void;
+};
+function runtime(){
+  const api=(window as unknown as {CompanyForm?:{createSession:()=>WorkspaceFormSession;documentSession:(key:string)=>WorkspaceFormSession;createTransport:(options:WriteTransportOptions)=>WorkspaceWriteTransport}}).CompanyForm;
+  if(!api?.createTransport||!api.createSession)throw Error('공통 저장 도구를 불러오지 못했습니다. 화면을 다시 열어 주세요.');
+  return api;
+}
+export const createWorkspaceFormSession=()=>runtime().createSession();
+export const workspaceDocumentFormSession=(key:string)=>runtime().documentSession(key);
+export const createWorkspaceWriteTransport=(options:WriteTransportOptions)=>runtime().createTransport(options);

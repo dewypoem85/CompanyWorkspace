@@ -1,0 +1,226 @@
+/* ===============================================================
+   스마트 번역 앱 전용 스타일
+   - 전역 CSS 패딩 상쇄 및 2컬럼 레이아웃 완벽 보정
+   - 좌측: 너비 240px 고정 사이드바 네비게이션
+   - 우측: 너비 100% - 240px 메인 워크스페이스
+   =============================================================== */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100%;
+  min-height: 100vh;
+  background: var(--cw-canvas);
+  color: var(--cw-text);
+  overflow-x: hidden;
+}
+
+body.has-company-workspace {
+  margin: 0 !important;
+  padding-top: 0 !important;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+}
+
+/* ── 앱 껍질 (좌우 2컬럼 Flex) ─────────────────────────── */
+.app-shell {
+  display: flex !important;
+  flex-direction: row !important;
+  width: 100%;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* ── 좌측 사이드바 (240px 고정) ───────────────────────── */
+.sidebar {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  bottom: 0 !important;
+  width: 240px !important;
+  min-width: 240px !important;
+  max-width: 240px !important;
+  height: 100vh !important;
+  background: var(--cw-surface);
+  border-right: 1px solid var(--cw-line);
+  display: flex !important;
+  flex-direction: column !important;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.brand-header {
+  height: 64px;
+  min-height: 64px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--cw-line);
+}
+
+.brand-header strong {
+  font-size: 1.05rem;
+  color: var(--cw-text);
+  white-space: nowrap;
+}
+
+.nav-links {
+  list-style: none;
+  margin: 0;
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.93rem;
+  color: var(--cw-text-soft);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+
+.nav-item:hover {
+  background: var(--cw-hover);
+  color: var(--cw-text);
+}
+
+.nav-item.active {
+  background: var(--cw-accent-soft);
+  color: var(--cw-accent);
+  font-weight: 600;
+}
+
+/* ── 우측 메인 영역 (사이드바 240px 제외한 나머지 전체) ───── */
+.main-content {
+  flex: 1 1 0% !important;
+  margin-left: 240px !important;
+  min-width: 0 !important;
+  min-height: 100vh;
+  display: flex !important;
+  flex-direction: column !important;
+  background: var(--cw-canvas);
+  position: relative;
+}
+
+/* ── 우측 상단 바 ─────────────────────────────────────── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: 64px;
+  min-height: 64px;
+  flex-shrink: 0;
+  background: var(--cw-surface);
+  border-bottom: 1px solid var(--cw-line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 32px;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* ── 우측 메인 워크스페이스 본문 ───────────────────────── */
+.workspace {
+  flex: 1;
+  padding: 28px 36px;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+/* ── 공통 카드 유틸 ──────────────────────────────────── */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.metric-card {
+  padding: 16px;
+  background: var(--cw-surface);
+  border: 1px solid var(--cw-line);
+  border-radius: 8px;
+}
+
+.metric-card.green strong { color: var(--cw-success); }
+.metric-card.amber strong { color: var(--cw-warning); }
+.metric-card.red   strong { color: var(--cw-danger); }
+.metric-card.blue  strong { color: var(--cw-accent); }
+
+
+/* 환경 설정 서브 메뉴 (사이드바 '환경 설정' 항목 아래에 펼쳐짐) */
+.settings-content {
+  max-width: 840px;
+  margin: 0 auto;
+}
+
+.settings-content > div[hidden] {
+  display: none;
+}
+
+.nav-sub-links {
+  list-style: none;
+  margin: 4px 0 6px;
+  padding: 0 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 1px solid var(--cw-line);
+  margin-left: 18px;
+}
+
+.nav-sub-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 0.88rem;
+  text-align: left;
+  color: var(--cw-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.nav-sub-item:hover {
+  background: var(--cw-surface-soft);
+  color: var(--cw-text);
+}
+
+.nav-sub-item.active {
+  background: var(--cw-accent-soft);
+  color: var(--cw-accent);
+  font-weight: 600;
+}
+
+.nav-sub-dirty {
+  margin-left: auto;
+  color: #eab308;
+  font-size: 0.7rem;
+}

@@ -1,0 +1,32 @@
+{
+  "name": "company-workspace",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build:ui": "node tooling/build-ui.mjs",
+    "check:ui": "node tooling/build-ui.mjs --check && node tooling/check-architecture.mjs",
+    "check:primitives": "node tooling/check-ui-primitives.mjs",
+    "check:network": "node tooling/check-network-boundaries.mjs",
+    "check:post": "node tooling/check-native-post-boundaries.mjs",
+    "ui:debt": "node tooling/check-ui-primitives.mjs --report",
+    "ui:debt:prune": "node tooling/check-ui-primitives.mjs --prune",
+    "test:ui": "node --test tooling/tests/*.test.mjs apps/portal/tests/*.test.cjs",
+    "check": "npm run check:ui && npm run check:ci && npm run test:ui",
+    "check:ci": "node tooling/verification-gate.mjs --check-workflow && node tooling/publication-workflow.mjs",
+    "source:inspect": "node tooling/verify-import.mjs",
+    "source:check": "node tooling/verify-import.mjs",
+    "source:legacy-inspect": "node tooling/source-drift.mjs inspect",
+    "source:remote-check": "node tooling/source-drift.mjs remote-check",
+    "deployment:candidate": "node tooling/deployment-candidate.mjs",
+    "page:new": "node tooling/create-page.mjs",
+    "pretest:browser": "npm --prefix apps/sheet run build && npm --prefix apps/schedule run build && npm --prefix apps/iap run build && node tooling/prepare-razor-fixtures.mjs",
+    "test:browser": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "jsdom": "26.1.0"
+  }
+}

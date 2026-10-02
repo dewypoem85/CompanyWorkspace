@@ -1,0 +1,196 @@
+Korean,English,Japanese,Chinese,Chinese (Taiwan),Spain
+체력,HP,体力,生命值,生命值,Salud
+공격력,Attack Power,攻撃力,攻击力,攻擊力,Poder de ataque
+치명타 확률,Critical Rate,会心率,暴击率,暴擊率,Probabilidad de crítico
+치명타 데미지,Critical Damage,会心ダメージ,暴击伤害,暴擊傷害,Daño crítico
+공격 속도,ATK SPD,攻撃速度,攻击速度,攻擊速度,VEL. ATQ
+이동 속도,Move Speed,移動速度,移动速度,移動速度,Velocidad de movimiento
+출혈,Bleed,出血,流血,流血,Sangrado
+중독,Poison,中毒,中毒,中毒,Veneno
+빙결,Freeze,氷結,冻结,冰凍,Congelación
+동상,Frostbite,凍傷,冻伤,凍傷,Congelación
+감전,Shock,感電,感电,感電,Electrocución
+공포,Fear,恐怖,恐惧,恐懼,Terror
+슈퍼아머,Super Armor,スーパーアーマー,超级护甲,超級護甲,Superarmadura
+인챈트,Enchant,エンチャント,附魔,附魔,Encantar
+충전,Charge,チャージ,充能,充能,Carga
+처형,Execution,処刑,处决,處決,Ejecución
+분노,Rage,怒り,愤怒,憤怒,Ira
+보호막,Barrier,シールド,护盾,護盾,Barrera
+유물,Artifact,遺物,圣器,聖器,Artefacto
+마석,Manastones,魔石,魔石,魔石,Piedras de Maná
+상호작용,Interact,インタラクト,互动,互動,Interactuar
+수령,Claim,受け取る,领取,領取,Reclamar
+보유,Owned,所持,已拥有,已擁有,En propiedad
+초기화,Reset,初期化,初始化,初始化,Reiniciar
+선택,Select,選択,选择,選擇,Seleccionar
+합성,Fuse,合成,合成,合成,Fusionar
+분해,Salvage,分解,分解,分解,Reciclar
+해금,Unlock,解禁,解锁,解鎖,Desbloquear
+서브스킬,Subskill,サブスキル,辅助技能,輔助技能,Habilidad secundaria
+메인스킬,Main Skill,メインスキル,主技能,主技能,Habilidad principal
+기본 공격,Basic Attack,基本攻撃,基础攻击,基礎攻擊,Ataque Básico
+스킬 강화,Enhance Skill,スキル強化,技能提升,技能提升,Mejorar habilidad
+유물 변경,Change Artifact,遺物変更,更改圣器,變更聖器,Cambiar artefacto
+시련의 석상,Statue of Trials,試練の石像,试炼石像,試煉石像,Estatua de las Pruebas
+세실리아,Caecilia,セシリア,塞西莉亚,塞西莉亞,Cecilia
+이그니스,Ignis,イグニス,伊格尼斯,伊格尼斯,Ignis
+영웅 이그니스,Ignis,イグナース,伊格内斯,伊格內斯,Ignis
+미믹,Mimic,ミミック,拟态,擬態,Mímico
+암살자,Assassin,アサシン,刺客,刺客,Asesina
+피뢰침,Lightning Rod,避雷針,避雷针,避雷針,Pararrayos
+망자의 불꽃,Flame of the Fallen,亡자의炎,亡者之焰,亡者之焰,Llama de los Caídos
+수상한 얼음 조각,Suspicious Ice Shard,怪しい氷片,可疑碎冰,可疑碎冰,Trozo de hielo sospechoso
+'전의',Fighting Spirit,「戦意」,“斗志”,「鬥志」,Espíritu combativo
+NPC,NPC,NPC,NPC,NPC,NPC
+가시 덩굴,Thorny Vines,棘のつる,荆棘藤蔓,荊棘藤蔓,Enredaderas Espinosas
+강령술,Necromancy,死霊術,死灵术,死靈術,Necromancia
+강화,Enhancement,強化,强化,強化,Mejora
+강화 부적,Enhancement Talismans,強化お守り,强化符咒,強化符咒,Talisman de Mejora
+개조,Modify,改造,改造,改造,Modificar
+검은 안대,Black Eyepatch,黒い眼帯,黑色眼罩,黑色眼罩,Parche Ocular Negro
+고대의 석판,Ancient Slate,古代の石版,古代石板,遠古石板,Losa antigua
+고유 룬 획득 확률,Unique Rune Chance,固有ルーン獲得確率,独特符文获得概率,獨特符文獲得機率,Probabilidad de runa única
+골드,Gold,ゴールド,金币,金幣,Oro
+골든칩,Golden Chips,ゴールデンチップ,黄金筹码,黃金籌碼,Fichas Doradas
+공격한다.,Attack.,攻撃する。,攻击。,攻擊。,Atacar.
+공통 안내,General Info,共通案内,共同说明,共同說明,Información general
+과다 출혈,Excessive Bleeding,過剰出血,失血过多,失血過多,Sangrado excesivo
+광란,Frenzy,狂乱,狂乱,狂亂,Frenesí
+균열석,Breachstone,亀裂石,裂隙石,裂隙石,Piedras de la Grieta
+그림자,Shadows,無影剣,影子,影子,Sombras
+근접,Melee,近接,近战,近戰,Melé
+근접 태그,Melee Tag,近接タグ,近战标签,近戰標籤,Etiqueta Cuerpo a cuerpo
+금 상자,Gold Box,金の箱,金箱,金箱,Caja de oro
+금덩이,Gold Nugget,金の塊,金块,金塊,Pepita de oro
+기계공,parts,部品,零件,零件,piezas
+기도석,Praystone,祈り石,祈祷石,祈禱石,Piedra del Rezo
+기사,Knight,騎士,骑士,騎士,Caballero
+낙인,Stigma,烙印,烙印,烙印,Estigma
+날렵함,Nimbleness,すごい,敏捷,敏捷,Agilidad
+날카로운 가시,Sharp Thorns,鋭いとげ,尖刺,尖刺,Espinas afiladas
+냉기,Frost,冷気,寒冰,寒冰,Hielo
+네크로노미콘,Necronomicon,ネクロノミコン,死亡之书,死靈之書,Necronomicón
+노련함,Expert,ベテラン,专家,專家,Experto
+대쉬,Dash,ダッシュ,冲刺,衝刺,dashes
+대장장이,Blacksmith,鍛冶屋,铁匠,鐵匠,Herrera
+던전 입장,Enter Dungeon,ダンジョン入場,进入地下城,進入地牢,Entrar en la mazmorra
+도감,Codex,図鑑,图鉴,圖鑑,Códice
+도굴의 기본,Cobra Statue,盗掘の基本,盗墓的基础,盜墓的基礎,Estatua de cobra
+도전 모드,Challenge Mode,チャレンジモード,挑战模式,挑戰模式,Modo desafío
+독의 칼날,Toxic Blade,毒の刃,毒刃,毒刃,Cuchilla tóxica
+돌 상자,Stone Box,石の箱,石箱,石箱,Caja de piedra
+로그아웃,Logout,ログアウト,退出,登出,Cerrar sesión
+로비 스킨 패스,Lobby Skin Pass,ロビースキンパス,大厅皮肤通行证,大廳造型通行證,Pase de aspecto de lobby
+마녀 켈시,Witch Kelsey,魔女ケルシー,女巫凯尔西,女巫凱爾西,Bruja Kelsey
+마무리 일격,Finishing Blow,最後の一撃,最后一击,最後一擊,Golpe final
+마법 태그,Magic Tag,魔法タグ,魔法标签,魔法標籤,Etiqueta Mágica
+만취,Intoxication,泥酔,醉意,醉意,Embriaguez
+모든 골드를 소모,Consume all Gold,すべてのゴールドを消費,花费所有金币,花費所有金幣,Consumir todo el oro
+무감각,Numbed,無感覚,麻木,麻木,Estupor
+무기 강화,Enhancement,武器強化,武器强化,武器強化,Mejorarse
+무기 스킬,Weapon Skill,武器スキル,武器技能,武器技能,Habilidad de Arma
+무기 스킬 강화,Enhance WeaponSkill,武器スキル強化,武器技能强化,武器技能強化,Mejorar habilidad del arma
+무자비,Merciless,無慈悲,无情,無情,Despiadado
+문자가 새겨진 돌,Inscribed Stone,文字が刻まれた石,刻字石,刻字石,Piedra con inscripción
+물 주머니,Water Pouch,水袋,水袋,水袋,Bolsa de agua
+물리,Physical,物理,物理,物理,Físico
+발동 확률,Activation Chance,スキル発動率,发动概率,發動機率,Probabilidad de Activación
+버프스킬,Buff Skill,バフスキル,增益技能,增益技能,Habilidad de mejora
+번개 부름,Call Lightning,稲妻召喚,闪电召唤,召喚閃電,Llamada del rayo
+베팅,Betting,ベッティング,投注,投注,apuesta
+보석 풍뎅이,Jewel Scarab,宝石スカラベ,宝石圣甲虫,寶石聖甲蟲,Escarabajo de Joya
+보스 상자,Boss Box,ボス箱,Boss箱,Boss箱,Caja de jefe
+보호막 강타,Barrier Smite,シールド強打,盾击,護盾強擊,Ataque barrera
+부족의 표식,Tribal Mark,部族の印,部落标志,部族標誌,Marca tribal
+부품,Parts,部品,部分,零件,Pieza
+불안정한 코어,Unstable Core,不安定コア,不稳定核心,不穩定核心,Núcleo Inestable
+붉은 감시자,Red Watcher,赤い監視者,红色监视者,紅色監視者,Vigía rojo
+붉은 악마의 계약,Red Devil's Contract,赤い悪魔の契約,赤魔契约,赤紅惡魔契約,Contrato con el diablo rojo
+사격 드론,Shot Drone,ショットドローン,射击无人机,射擊無人機,Dron tirador
+사냥 본능,Hunting Instinct,狩りの本能,狩猎本能,狩獵本能,Instinto de Caza
+사하라 황소 벌레,Sahara Bull Beetle,サハラ・ブル・ビートル,撒哈拉牛甲虫,撒哈拉牛甲蟲,Escarabajo Toro del Sahara
+상급 상자,High-grade Box,上級箱,高级箱子,高級箱子,Caja de grado alto
+상점,Shop,ショップ,商店,商店,Tienda
+새로고침,Refresh,リフレッシュ,刷新,刷新,Refrescar
+서브 스킬,Sub Skill,サブスキル,副技能,副技能,Habilidad secundaria
+설정,Settings,設定,设置,設定,Ajustes
+세실리아의 가호,Caecilia's Blessing,セシリアの加護,塞西莉亚的庇佑,賽西莉雅庇佑,Bendición de Caecilia
+소울하트,Soul Heart,ソウルハート,灵魂之心,靈魂之心,Corazón de Alma
+숙취,Hangover,二日酔い,宿醉,宿醉,Resaca
+스카라베,Scarab,スカラベ,圣甲虫,聖甲蟲,Escarabajo
+스킬,Skills,スキル,技能,技能,Habilidades
+스킬 개조,skill mod,スキル改造,技能改造,技能模組,modificación de habilidad
+스킬 데미지,Skill Damage,スキルダメージ,技能伤害,技能傷害,daño de habilidad
+식인식물 클라우드,Carnivorous Plant Klaud,人食い植物クラウド,霸王食人花,霸王食人花,Klaud la planta carnívora
+신성,Divinity,神性,神性,神性,Divinidad
+신성 보호막,Holy Shield,神聖保護膜,圣盾,聖盾,Barrera sagrada
+신의 주사위,God's Dice,神のサイコロ,天神骰,上帝之骰,Dado de Dios
+심안,Mind's Eye,闇視,暗视之眼,暗視之眼,Visión Sombría
+암흑,Darkness,暗闇,黑暗,黑暗,Oscuridad
+얼어붙은 보호막,Frozen Shield,凍てつく防御膜,冰冻护盾,冰凍護盾,Escudo Congelado
+얼음꽃,Ice Flower,氷花,冰之花,冰之花,Flor de hielo
+여신상,far right end of the lobby,女神像,女神像,女神像,extremo derecho del lobby
+연속 찌르기,Consecutive Stabs,連続刺す,连续刺伤,連續刺傷,Cuchilladas consecutivas
+연속 타격,Continuous Blow,連続打撃,连续打击,連續打擊,Choques continuos
+영웅의 별,Star of Heroes,英雄の星,英雄之星,英雄之星,Estrella de los héroes
+영혼석,Soulstone,魂石,灵魂石,靈魂石,Piedra del Alma
+영혼의 계약,Soul's Contract,魂の契約,灵魂的契约,靈魂的契約,pacto de alma
+예언자,Foreboder,預言者,预言家,先知,Adivino
+유체화,Ghost Glide,流体化,幽影,移形換影,Deslizamiento fantasma
+은 상자,Silver Box,銀の箱,银箱,銀箱,Caja de plata
+은신,Stealth,隠し,隐,隱,Sigilo
+의식,Consciousness,儀式,意识,意識,Percepción
+일반 룬,Common Rune,通常ルーン,普通符文,普通符文,Runa común
+일반 모드,Normal Mode,ノーマルモード,普通模式,正常模式,Modo normal
+임무,Mission,任務,任务,任務,Misión
+잠행,Stealth,潜行,潜行,潛行,Sigilo
+재빠른 몸놀림,Nimble Movement,素早い身のこなし,身手敏捷,凌波微步,Movimiento ágil
+저주,Curse,呪い,诅咒,詛咒,Maldición
+전리품,Loot,戦利品,战利品,戰利品,Botín
+절반,Half,半減,减半,減半,Mitad
+점프,Jump,ジャンプ,跳跃,跳躍,Saltar
+조작,Controls,操作,其他设置,手術,Los controles
+주문,Spell,呪文,咒语,咒語,Hechizo
+주사위,Dice,サイコロ,骰子,骰子,Dado
+주술,Sorcery,呪術,巫术,巫術,Hechicería
+죽음의 광선,Death Ray,死の光線,死亡光线,死亡光線,Rayo letal
+중급 상자,Medium-grade Box,中級箱,中级箱子,中級箱子,Caja de grado medio
+철벽,Iron Wall,鉄壁,铁壁,鐵壁,Muro de Hierro
+초고속 모드,Super Fast Mode,超高速モード,超快模式,超快模式,Modo súper rápido
+축제 물품,Festival Items,祭りのアイテム,节日物品,節日物品,Objetos de Festival
+취기,Drunkenness,中毒,中毒,中毒,embriaguez
+치명타 피해,Critical Damage,会心ダメージ,暴击伤害,暴擊傷害,Daño crítico
+캐릭터 스킨 패스,Character Skin Pass,キャラクタースキンパス,角色皮肤通行证,角色造型通行證,Pase de aspecto de personaje
+컬렉션,Collection,コレクション,收藏,收藏,Colección
+코브라 석상,Cobra Statue,コブラの石像,眼镜蛇石像,眼鏡蛇石像,Estatua de cobra
+코인,Coin,コイン,硬币,硬幣,Moneda
+쿠폰,Coupon,クーポン,兑换码,優惠券,Cupón
+태그,Tag,タグ,标签,標籤,Etiqueta
+태그 시너지,Tag Synergy,タグシナジー,标签协同,標籤協同,Sinergia de etiquetas
+투사체,Projectile,発射体,投掷体,拋射體,Proyectil
+투척용 독 수리검,Poisoned Throwing Shuriken,投擲用毒手裏剣,投掷用毒手里剑,投擲用毒手裡劍,Shuriken de Veneno Arrojadizo
+튜드,Tude,チュード,图德,圖德,Tude
+특급 상자,Special-grade Box,特級箱,特级箱子,特級箱子,Caja de grado especial
+특수 개조,Specially Modified,特殊改造,特殊改造,特殊改造,Modificación especial
+포기,Abandon,放棄,放弃,放棄,salir
+폭탄마,Bomber,爆弾魔,炸弹狂,炸彈狂,Bombardero
+폭포 가르기,Waterfall Slash,滝斬り,夺魔剑,破瀑,Corte en cascada
+푸른 감시자,Blue Watcher,青い監視者,蓝色监视者,藍色監視者,Vigía azul
+프리즘 상자,Prism Box,プリズムの箱,棱镜箱,棱鏡箱,Caja de prisma
+플라즈마 보호막,Plasma Shield,プラズマ保護膜,等离子体保护膜,等離子體保護膜,Barrera de plasma
+피의 광란,Blood Frenzy,血の狂乱,Blood Frenzy,Blood Frenzy,Frenesí de sangre
+피의 정수,Blood Essence,血の精髄,魔血精髓,魔血精粹,Esencia de sangre
+피의 창,Blood Spear,血の槍,血之长枪,血之長槍,Lanza de Sangre
+핏빛 비,Crimson Rain,クリムゾンレイン,血色雨,血色雨,Lluvia Carmesí
+하급 상자,Low-grade Box,下級箱,低级箱子,低級箱子,Caja de grado bajo
+하트,cannot be changed,ハート,心脏,心臟,corazón
+학살,Massacre,虐殺,屠杀,屠殺,Masacre
+학살자,Slayer,虐殺者,杀戮者,殺手,Exterminadora
+해골 머리,Skull Head,骸骨の頭,骷髅头,骷髏頭,Calavera
+혈액 방패,Blood Shield,血液の盾,血液护盾,血液護盾,Escudo de Sangre
+화염 지대,Flame Zone,火炎地帯,火焰地带,火焰地帶,Zona ignífera
+활성화 컬렉션,Active Collection,アクティブコレクション,激活收藏,激活收藏,Colección de activación
+황금 송편,Golden Songpyeon,黄金ソンピョン,黄金松片,黃金松片,Songpyeon Dorado
+희귀,Rare,レア,稀有,稀有,Rareza Rara
+통상,Normal,通常,一般,普通,Normal

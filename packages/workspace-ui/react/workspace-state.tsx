@@ -1,0 +1,22 @@
+import { useEffect, useRef } from 'react';
+
+export type WorkspaceStateProps = {
+  kind: 'loading' | 'empty' | 'error' | 'denied' | 'success';
+  title?: string;
+  message?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+};
+
+// Like WorkspaceNavigation, React owns the mount only; the shared renderer owns its descendants.
+export function WorkspaceState(props: WorkspaceStateProps) {
+  const node = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const renderer = (window as unknown as { CompanyState?: { render: (node: HTMLElement, props: WorkspaceStateProps) => void } }).CompanyState;
+    if (node.current) {
+      if (renderer) renderer.render(node.current, props);
+      else node.current.textContent = props.message || props.title || '화면을 불러오지 못했습니다. 페이지를 다시 열어 주세요.';
+    }
+  }, [props.kind, props.title, props.message, props.actionLabel, props.onAction]);
+  return <div ref={node} data-workspace-feedback="" />;
+}

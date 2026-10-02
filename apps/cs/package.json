@@ -1,0 +1,18 @@
+{
+  "name": "company-cs-tool",
+  "version": "1.3.0",
+  "private": true,
+  "type": "module",
+  "description": "Steam 환불, PlayFab 상품 지급·회수, 플레이어 데이터 편집, Azure PlayFab 로그 검색을 처리하는 내부 CS 도구",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check company-gateway.js && node --check app-server.js && node --check lib/company-auth.js && node --check lib/company-user.js && node --check lib/public-assets.js && node --check lib/steam.js && node --check lib/steam-report-index.js && node --check lib/steam-product-catalog.js && node --check lib/validation.js && node --check lib/product-command.js && node --check lib/product-playfab.js && node --check lib/product-command-api.js && node --check lib/player-data-api.js && node --check lib/playfab-log-search.js && node --check public/theme.js && node --check public/app.js && node --check public/product-catalog.js && node --check public/product-commands.js && node --check public/json-lossless.js && node --check public/text-diff.js && node --check public/player-data.js && node --check public/playfab-log-format.js && node --check public/playfab-logs.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "hyparquet": "1.26.2"
+  }
+}

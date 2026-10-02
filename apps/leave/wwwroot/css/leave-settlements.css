@@ -1,0 +1,8 @@
+[data-settlement-screen] { min-width:0; }
+[data-settlement-screen] .settlement-panel { margin-block:20px; min-width:0; overflow:hidden; }
+[data-settlement-screen] [data-settlement-summary] { color:var(--cw-muted); }
+[data-settlement-screen] .settlement-actions { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+[data-settlement-screen] .settlement-history { min-width:850px; width:100%; }
+[data-settlement-screen] .settlement-history th { white-space:nowrap; }
+[data-settlement-screen] .settlement-history td { overflow-wrap:anywhere; max-width:300px; }
+[data-settlement-screen] .settlement-raw-draft { white-space:pre-wrap; overflow-wrap:anywhere; color:var(--cw-text); background:var(--cw-raised); border:1px solid var(--cw-line); padding:16px; }

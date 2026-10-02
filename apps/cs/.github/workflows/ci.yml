@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax check
+        run: npm run check
+      - name: Unit tests
+        run: npm test
+      - name: Docker build
+        run: docker build -t steam-refund-cs:test .
+      - name: Container smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name steam-refund-cs-smoke -p 3000:3000 \
+            -e COMPANY_PORTAL_URL=https://company.example.com \
+            -e COMPANY_SSO_ISSUER=company-portal \
+            -e COMPANY_SSO_SHARED_SECRET=0123456789abcdef0123456789abcdef0123456789abcdef \
+            steam-refund-cs:test
+          trap 'docker logs steam-refund-cs-smoke || true; docker rm -f steam-refund-cs-smoke || true' EXIT
+
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/health > /tmp/health.json; then
+              cat /tmp/health.json
+              break
+            fi
+            if [ "$attempt" = 20 ]; then
+              echo 'Company SSO 컨테이너 health 확인에 실패했습니다.' >&2
+              exit 1
+            fi
+            sleep 1
+          done
+
+          redirect_location="$(curl --silent --output /dev/null --write-out '%{redirect_url}' http://127.0.0.1:3000/playfab-logs.html)"
+          case "$redirect_location" in
+            https://company.example.com/Auth/Cs*returnUrl*) ;;
+            *)
+              echo "Company Portal 로그인 리디렉션이 올바르지 않습니다: $redirect_location" >&2
+              exit 1
+              ;;
+          esac

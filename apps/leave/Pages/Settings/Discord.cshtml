@@ -1,0 +1,132 @@
+@page
+@model LeaveManager.Pages.Settings.DiscordModel
+
+<div id="discordSettings">
+<script type="application/json" id="discordSnapshot">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Snapshot(Model.Employee)))</script>
+<div id="discordState" hidden></div>
+<p id="discordRecheck" hidden><a asp-page="Discord" class="btn btn-secondary">현재 설정 다시 확인</a></p>
+<fieldset id="discordFields" class="discord-fields">
+<section class="page-title-row">
+    <div>
+        <p class="eyebrow">Discord direct message</p>
+        <h1>Discord 개인 DM 알림</h1>
+        <p class="muted-text">기존 앱 알림, 브라우저 알림, 채널 웹훅은 그대로 유지하고 개인 DM만 추가로 설정합니다.</p>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div data-workspace-state="success" data-state-title="Discord 처리 결과" data-state-message="@Model.StatusMessage"></div>
+}
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div data-workspace-state="error" data-state-title="Discord 설정 확인" data-state-message="@Model.ErrorMessage"></div>
+}
+
+<section class="panel discord-settings-panel">
+    <div class="panel-head">
+        <div>
+            <h2>연동 상태</h2>
+            <p>회사 계정의 연차 프로필과 Discord 계정을 1:1로 연결합니다.</p>
+        </div>
+    </div>
+
+    <div class="discord-status-grid">
+        <div class="discord-status-card">
+            <span>Discord OAuth</span>
+            <strong class="cw-state-pill" data-tone="@(Model.IsOAuthConfigured ? "success" : "warning")">@(Model.IsOAuthConfigured ? "설정됨" : "미설정")</strong>
+        </div>
+        <div class="discord-status-card">
+            <span>Discord Bot Token</span>
+            <strong class="cw-state-pill" data-tone="@(Model.IsBotConfigured ? "success" : "warning")">@(Model.IsBotConfigured ? "설정됨" : "미설정")</strong>
+        </div>
+        <div class="discord-status-card">
+            <span>내 Discord 계정</span>
+            <strong id="discordIdentity">@(string.IsNullOrWhiteSpace(Model.Employee.DiscordUserId) ? "미연동" : Model.Employee.DiscordUsername ?? Model.Employee.DiscordUserId)</strong>
+        </div>
+    </div>
+
+    @if (!Model.IsConfigured)
+    {
+        <div class="discord-config-warning" data-workspace-state="error" data-state-title="Discord 서버 설정이 필요합니다." data-state-message="Discord 개인 DM을 사용하려면 서버의 OAuth와 Bot 설정을 확인하세요."></div>
+        <p class="discord-config-warning">
+            Discord 개인 DM을 사용하려면 .env에 DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_BOT_TOKEN, DISCORD_OAUTH_REDIRECT_URI가 필요합니다.
+            현재 Redirect URI: <code>@(string.IsNullOrWhiteSpace(Model.RedirectUri) ? "미설정" : Model.RedirectUri)</code>
+        </p>
+    }
+
+    <div class="discord-actions-row">
+        <form method="post" asp-page-handler="Link" asp-antiforgery="true" data-discord-action="Link">
+            <input type="hidden" name="expectedEmployeeId" value="@Model.Employee.Id" />
+            <input type="hidden" name="expectedStateToken" value="@Model.StateToken" />
+            <button type="submit" class="cw-button" data-variant="primary" disabled="@(!Model.IsOAuthConfigured)">@(string.IsNullOrWhiteSpace(Model.Employee.DiscordUserId) ? "Discord 연동" : "Discord 다시 연동")</button>
+        </form>
+        @if (!string.IsNullOrWhiteSpace(Model.Employee.DiscordUserId))
+        {
+            <form method="post" asp-page-handler="Test" asp-antiforgery="true" data-discord-action="Test">
+                <input type="hidden" name="expectedEmployeeId" value="@Model.Employee.Id" />
+                <input type="hidden" name="expectedStateToken" value="@Model.StateToken" />
+                <button type="submit" class="cw-button" disabled="@(!Model.IsBotConfigured)">DM 테스트</button>
+            </form>
+            <form method="post" asp-page-handler="Unlink" asp-antiforgery="true" data-discord-action="Unlink">
+                <input type="hidden" name="expectedEmployeeId" value="@Model.Employee.Id" />
+                <input type="hidden" name="expectedStateToken" value="@Model.StateToken" />
+                <button type="submit" class="cw-button" data-variant="danger">연동 해제</button>
+            </form>
+        }
+    </div>
+</section>
+
+<section class="panel discord-settings-panel">
+    <div class="panel-head">
+        <div>
+            <h2>개인 DM으로 받을 알림</h2>
+            <p>앱 내부 알림은 계속 생성됩니다. 아래 항목은 Discord 개인 DM을 추가로 받을 항목입니다.</p>
+        </div>
+    </div>
+
+    <form method="post" asp-page-handler="Save" asp-antiforgery="true" class="discord-preference-form" data-discord-action="Save">
+        <input type="hidden" name="expectedEmployeeId" value="@Model.Employee.Id" />
+        <input type="hidden" name="expectedStateToken" value="@Model.StateToken" />
+        <label class="discord-master-check cw-check-control">
+            <input class="cw-checkbox" type="checkbox" name="discordDmEnabled" value="true" checked="@(Model.Employee.DiscordDmEnabled)" disabled="@(string.IsNullOrWhiteSpace(Model.Employee.DiscordUserId))" />
+            <span>Discord 개인 DM 알림 사용</span>
+        </label>
+        <input type="hidden" name="discordDmEnabled" value="false" />
+
+        @if (Model.Options.Count == 0)
+        {
+            <div data-workspace-state="empty" data-state-title="선택 가능한 알림 항목이 없습니다."></div>
+        }
+        else
+        {
+            <div class="discord-option-grid">
+                @foreach (var option in Model.Options)
+                {
+                    var isChecked = Model.SelectedTypes.Contains(option.Type);
+                    <label class="discord-option-card cw-check-control">
+                        <input class="cw-checkbox" type="checkbox" name="selectedTypes" value="@option.Type" checked="@(isChecked)" disabled="@(string.IsNullOrWhiteSpace(Model.Employee.DiscordUserId))" />
+                        <span>
+                            <strong>@option.Label</strong>
+                            <small>@option.Description</small>
+                        </span>
+                    </label>
+                }
+            </div>
+        }
+
+        <div class="discord-save-row">
+            <span id="discordDirty" class="cw-state-pill" data-tone="neutral">변경 없음</span>
+            <button type="submit" class="cw-button" data-variant="primary" disabled="@(string.IsNullOrWhiteSpace(Model.Employee.DiscordUserId))">설정 저장</button>
+            @if (string.IsNullOrWhiteSpace(Model.Employee.DiscordUserId))
+            {
+                <span class="muted-text">Discord 연동 후 저장할 수 있습니다.</span>
+            }
+        </div>
+    </form>
+</section>
+</fieldset>
+</div>
+@section Scripts {
+    <script type="module" src="~/js/discord-settings.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,90 @@
+@page
+@model LeaveManager.Pages.Admin.IndexModel
+
+<link rel="stylesheet" href="~/css/approval-forms.css" asp-append-version="true" />
+<div data-approval-screen data-employee-id="@Model.CurrentEmployee.Id" data-write-locked="@Model.WriteLocked.ToString().ToLowerInvariant()">
+<div class="page-title-row">
+    <div>
+        <p class="eyebrow">Admin</p>
+        <h1>관리자 페이지</h1>
+        <p class="muted">승인 대기, 취소 승인 대기, 최근 신청 내역을 관리합니다.</p>
+    </div>
+</div>
+
+<div data-approval-state hidden></div>
+@if (Model.ErrorMessage is not null) {
+    <div data-workspace-state="error" data-state-title="처리 결과를 확인해 주세요." data-state-message="@Model.ErrorMessage"></div>
+    @if (Model.SubmittedReason is not null) { <p>제출한 삭제 사유: @Model.SubmittedReason</p> }
+}
+<p><button type="button" class="cw-button" data-approval-refresh>목록 새로고침</button> <a asp-page="/Admin/Index" target="_blank" rel="noopener">새 탭에서 최신 내역 확인</a></p>
+<partial name="_ApprovalQueues" model="Model" />
+
+<section class="admin-request-section" id="adminRecentRequestsArea">
+<div class="panel-head list-panel-head">
+    <div>
+        <h2>최근 신청 내역</h2>
+        <p class="list-summary">총 @(Model.RecentTotalCount)건 중 @(Model.RecentTotalCount == 0 ? 0 : ((Model.RecentPage - 1) * Model.RecentLimit) + 1)~@Math.Min(Model.RecentPage * Model.RecentLimit, Model.RecentTotalCount)건 표시</p>
+    </div>
+    <form method="get" class="compact-filter-form" id="adminRecentListForm">
+        <input type="hidden" name="RecentPage" value="@Model.RecentPage" />
+        <label class="cw-form-field">표시 개수
+            <select class="cw-form-control" name="RecentLimit">
+                @if (Model.RecentLimit == 10) { <option value="10" selected>10개</option> } else { <option value="10">10개</option> }
+                @if (Model.RecentLimit == 20) { <option value="20" selected>20개</option> } else { <option value="20">20개</option> }
+                @if (Model.RecentLimit == 50) { <option value="50" selected>50개</option> } else { <option value="50">50개</option> }
+                @if (Model.RecentLimit == 100) { <option value="100" selected>100개</option> } else { <option value="100">100개</option> }
+            </select>
+        </label>
+        <noscript><button class="cw-button" data-size="compact">적용</button></noscript>
+    </form>
+</div>
+<div class="cw-table-scroll" tabindex="0" role="region" aria-label="신청 내역 표"><table class="cw-data-table" data-layout="cards" role="table"><thead><tr><th scope="col">직원</th><th scope="col">신청일</th><th scope="col">사용일</th><th scope="col">신청 사유</th><th scope="col">업무 일정</th><th scope="col">신청 일수</th><th scope="col">상태</th><th scope="col">잔여</th><th scope="col">처리자</th><th scope="col">관리</th></tr></thead><tbody>
+@foreach(var row in Model.RecentRequests){var r=row.Request;<tr>
+<td data-label="직원"><div class="cw-table-value"><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="@r.Employee.Id">@System.Globalization.StringInfo.GetNextTextElement(r.Employee.Name)</span>@r.Employee.Name<br/><small>@r.Employee.Email</small>@if (r.IsAdvance) { <br/><span class="advance-badge cw-state-pill" data-tone="warning">@Model.AdvanceKindLabel(r)</span> }</div></td>
+<td data-label="신청일"><div class="cw-table-value">@Model.Kst(r.RequestedAtUtc)</div></td>
+<td data-label="사용일"><div class="cw-table-value">@string.Join(", ",r.Dates.OrderBy(x=>x.Date).Select(x=>$"{x.Date:yyyy-MM-dd} {Model.PortionName(x.Portion)}"))</div></td>
+<td data-label="신청 사유"><div class="cw-table-value"><div class="work-plan-preview">@(string.IsNullOrWhiteSpace(r.Reason) ? "-" : r.Reason)</div></div></td>
+<td data-label="업무 일정"><div class="cw-table-value"><div class="work-plan-preview">@r.WorkPlan</div></div></td>
+<td data-label="신청 일수"><div class="cw-table-value">@r.CalculatedDays@if (r.IsAdvance) { <br/><span class="advance-badge cw-state-pill" data-tone="warning">@Model.AdvanceBreakdownLabel(r)</span> }</div></td>
+<td data-label="상태"><div class="cw-table-value">@Model.StatusName(r.Status)</div></td>
+<td data-label="잔여"><div class="cw-table-value">@row.Balance.Available</div></td>
+<td data-label="처리자"><div class="cw-table-value">@row.DecisionActorLabel</div></td>
+<td data-label="관리"><div class="cw-table-value">
+    @if (Model.CanForceDelete)
+    {
+        <partial name="_ApprovalAction" model="@(new LeaveManager.Pages.Admin.ApprovalActionModel(r, Model.CurrentEmployee, "ForceDelete", Model.WriteLocked))" />
+    }
+    else
+    {
+        <span class="muted-text">마스터만 삭제 가능</span>
+    }
+</div></td>
+</tr>}
+@if (Model.RecentRequests.Count == 0)
+{
+    <tr><td colspan="10" class="muted-text" data-label=""><div class="cw-table-value">표시할 신청 내역이 없습니다.</div></td></tr>
+}
+</tbody></table></div>
+@if (Model.RecentTotalPages > 1)
+{
+    <nav class="pager" aria-label="최근 신청 내역 페이지">
+        @{ var previousPage = Math.Max(1, Model.RecentPage - 1); var nextPage = Math.Min(Model.RecentTotalPages, Model.RecentPage + 1); }
+        <a class="btn btn-secondary small @(Model.RecentPage <= 1 ? "is-disabled" : "")" asp-page="Index" asp-route-RecentLimit="@Model.RecentLimit" asp-route-RecentPage="@previousPage">이전</a>
+        <span class="pager-status">@Model.RecentPage / @Model.RecentTotalPages</span>
+        <a class="btn btn-secondary small @(Model.RecentPage >= Model.RecentTotalPages ? "is-disabled" : "")" asp-page="Index" asp-route-RecentLimit="@Model.RecentLimit" asp-route-RecentPage="@nextPage">다음</a>
+        <form method="get" class="pager-jump-form" id="adminRecentPageJumpForm">
+            <input type="hidden" name="RecentLimit" value="@Model.RecentLimit" />
+            <label class="cw-form-field pager-jump-label">페이지
+                <input class="cw-form-control" type="number" name="RecentPage" min="1" max="@Model.RecentTotalPages" value="@Model.RecentPage" />
+            </label>
+            <button class="cw-button" data-size="compact">이동</button>
+        </form>
+    </nav>
+}
+</section>
+</div>
+
+
+@section Scripts {
+    <script src="~/js/approval-forms.js" asp-append-version="true"></script>
+}

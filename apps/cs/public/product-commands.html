@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PlayFab 상품 지급·회수 · CS</title>
+  <script src="https://company.example.com/js/company-workspace.js?v=a1b88b90a3ac4e17"></script>
+
+  <script src="/theme.js?v=20260908.1"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260908.1">
+  <link rel="stylesheet" href="/product-commands.css?v=20260910.1" data-cs-page-style>
+  <link rel="stylesheet" href="/theme.css">
+  <script type="module" src="/product-commands.js?v=20260910.1" data-cs-page-module></script>
+  <script type="module" src="/cs-navigation.js"></script>
+<link rel="stylesheet" href="https://company.example.com/css/company-workspace.css?v=a1b88b90a3ac4e17">
+</head>
+<body>
+  <div data-company-workspace data-company-service="cs"></div>
+  <div class="app-frame">
+    <aside class="app-sidebar cw-sidebar" data-workspace-navigation="cs"></aside>
+    <div class="workspace" data-workspace-view="cs.products">
+      <header class="workspace-topbar"><div class="breadcrumbs"><span>CS Console</span><b>/</b><strong>상품 지급·회수</strong></div><div id="productModeBadge" class="cw-state-pill" data-tone="neutral">설정 확인 중</div></header>
+      <main class="workspace-content workspace-wide">
+        <header class="page-header">
+          <div class="page-title-icon product-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4.5-8 4.5-8-4.5L12 3Zm-8 9 8 4.5 8-4.5M4 16.5l8 4.5 8-4.5"/></svg></div>
+          <div><p class="eyebrow">PlayFab operations</p><h1>상품 지급·회수</h1><p class="description">플레이어별 지급·회수 명령을 미리 검증하고, 감사 기록과 함께 안전하게 등록합니다.</p></div>
+        </header>
+        <section class="context-grid">
+          <section class="cw-callout" data-tone="info" role="note"><strong>UserReadOnlyData</strong><p>서버 전용 <code>지급</code>·<code>회수</code> 키에만 명령을 저장합니다.</p></section>
+          <section class="cw-callout" data-tone="warning" role="note"><strong>처리 순서</strong><p>게임은 <code>회수 → 지급</code> 순서로 처리하며 두 키는 독립적으로 관리됩니다.</p></section>
+          <section class="cw-callout" data-tone="neutral" role="note"><strong>안전한 완료 처리</strong><p>요청 ID가 일치할 때 게임 CloudScript가 처리한 키만 삭제합니다.</p></section>
+        </section>
+
+    <fieldset id="productFields" disabled aria-label="상품 명령 작업">
+    <section id="environmentNotice" hidden></section>
+    <section id="productMessageBox" hidden></section>
+
+    <div class="product-workflow-tabs" role="tablist" aria-label="상품 지급·회수 작업 선택">
+      <button id="commandTab" type="button" class="cw-button" data-variant="primary" role="tab" aria-selected="true" aria-controls="commandPanel">명령 작성</button>
+      <button id="manageTab" type="button" class="cw-button" data-variant="secondary" role="tab" aria-selected="false" aria-controls="managePanel" tabindex="-1">대기 명령 관리</button>
+    </div>
+
+    <div id="commandPanel" role="tabpanel" aria-labelledby="commandTab">
+
+    <section class="card">
+      <div class="card-heading">
+        <div>
+          <p class="step">STEP 1</p>
+          <h2>대상 서버와 작업</h2>
+        </div>
+        <span id="targetCountText" class="muted">0명</span>
+      </div>
+
+      <div class="cw-form-fields">
+        <label class="cw-form-field">
+          <span>PlayFab 서버</span>
+          <select id="environmentSelect" class="cw-form-control">
+            <option value="live">라이브 서버</option>
+            <option value="test">테스트 서버</option>
+          </select>
+          <small id="environmentTitleText">Title ID 확인 중</small>
+        </label>
+        <label class="cw-form-field">
+          <span>작업 종류</span>
+          <select id="operationSelect" class="cw-form-control">
+            <option value="grant">지급</option>
+            <option value="revoke">회수</option>
+          </select>
+          <small>지급은 UserReadOnlyData <code>지급</code>, 회수는 <code>회수</code> 키 하나만 변경합니다.</small>
+        </label>
+        <label class="cw-form-wide cw-form-field">
+          <span>처리 사유 / 문의 번호</span>
+          <input id="productMemo" maxlength="500" autocomplete="off" placeholder="예: CS-20260812-001 결제 복구 지급" class="cw-form-control">
+          <small>감사 로그에 대상 서버와 함께 기록됩니다. 3~500자.</small>
+        </label>
+        <label class="cw-form-wide cw-form-field">
+          <span>PlayFab UID</span>
+          <textarea id="uidInput" rows="7" spellcheck="false" placeholder="한 줄에 하나씩 입력하거나 쉼표/CSV로 붙여넣기&#10;25C2B21CDCE95200&#10;F7F761BBA4CDB082" class="cw-form-control"></textarea>
+          <small>공백과 중복 UID는 자동 제거합니다. 한 번에 최대 100명.</small>
+        </label>
+      </div>
+      <div id="uidValidation" class="validation-summary muted">UID를 입력해 주세요.</div>
+    </section>
+
+    <section class="card">
+      <div class="card-heading">
+        <div>
+          <p class="step">STEP 2</p>
+          <h2>명령 작성</h2>
+        </div>
+        <span class="muted">빈 항목은 JSON에서 생략</span>
+      </div>
+
+      <h3 class="section-title">재화</h3>
+      <div class="currency-grid">
+        <label class="cw-form-field"><span>젬</span><input id="currencyGem" inputmode="numeric" min="0" step="1" placeholder="0" class="cw-form-control"></label>
+        <label class="cw-form-field"><span>영혼석</span><input id="currencySoul" inputmode="numeric" min="0" step="1" placeholder="0" class="cw-form-control"></label>
+        <label class="cw-form-field"><span>기도석</span><input id="currencyPrayer" inputmode="numeric" min="0" step="1" placeholder="0" class="cw-form-control"></label>
+        <label class="cw-form-field"><span>균열석</span><input id="currencyRift" inputmode="numeric" min="0" step="1" placeholder="0" class="cw-form-control"></label>
+        <label class="cw-form-field"><span>마일리지</span><input id="currencyMileage" inputmode="numeric" min="0" step="1" placeholder="0" class="cw-form-control"><small>패키지 자동 적립·차감 외 추가 조정분만 입력합니다.</small></label>
+      </div>
+
+      <div class="command-grid">
+        <label class="cw-form-field">
+          <span>캐릭터</span>
+          <textarea id="charactersInput" rows="4" placeholder="21&#10;0" class="cw-form-control"></textarea>
+          <small>숫자 ID. 쉼표 또는 줄바꿈 구분.</small>
+        </label>
+        <label class="cw-form-field">
+          <span>펫</span>
+          <textarea id="petsInput" rows="4" placeholder="5&#10;8" class="cw-form-control"></textarea>
+          <small>숫자 ID. 쉼표 또는 줄바꿈 구분.</small>
+        </label>
+        <label class="cw-form-field">
+          <span>스킨</span>
+          <textarea id="skinsInput" rows="4" placeholder="21-1&#10;0-1" class="cw-form-control"></textarea>
+          <small><code>캐릭터ID-아이템ID</code> 형식.</small>
+        </label>
+        <label class="cw-form-field">
+          <span>무기</span>
+          <textarea id="weaponsInput" rows="4" placeholder="21-1&#10;0-6" class="cw-form-control"></textarea>
+          <small><code>캐릭터ID-아이템ID</code> 형식.</small>
+        </label>
+        <label class="cw-form-wide cw-form-field">
+          <span>패키지</span>
+          <textarea id="packagesInput" rows="5" placeholder="IAPProductDataSO productName을 한 줄에 하나씩 입력" class="cw-form-control"></textarea>
+          <small><code>IAPProductDataSO.productName</code>을 정확히 입력합니다. 같은 패키지를 여러 번 처리하려면 같은 이름을 여러 줄 입력합니다.</small>
+        </label>
+      </div>
+
+      <section class="product-input-results-wrap" aria-labelledby="productInputResultsTitle">
+        <div class="product-input-results-heading">
+          <div>
+            <p class="step">LIVE RESULT</p>
+            <h3 id="productInputResultsTitle">숫자 입력 결과</h3>
+          </div>
+          <span class="muted">입력 즉시 아이콘·이름·상태를 확인합니다.</span>
+        </div>
+        <div id="productInputResults" class="product-input-results" aria-live="polite"></div>
+      </section>
+
+      <div id="executionSummary" class="execution-summary" data-tone="danger" aria-live="polite">
+        <div><small>서버</small><strong id="executionEnvironment">라이브 서버</strong></div>
+        <div><small>작업</small><strong id="executionOperation">지급</strong></div>
+        <div><small>대상</small><strong id="executionTargets">유효 0명 · 오류 0명</strong></div>
+        <div><small>명령</small><strong id="executionCommands">입력 0개</strong></div>
+        <p id="executionRisk">설정 확인 중</p>
+        <button id="previewButton" type="button" class="cw-button" data-variant="primary">최종 JSON 미리보기</button>
+      </div>
+    </section>
+
+    <section id="previewCard" class="card hidden">
+      <div class="card-heading">
+        <div>
+          <p class="step">STEP 3</p>
+          <h2>실행 전 확인</h2>
+        </div>
+        <span id="previewBadge" class="cw-state-pill" data-tone="neutral">미리보기</span>
+      </div>
+
+      <dl id="previewSummary" class="detail-grid product-summary"></dl>
+
+      <section id="existingWarning" hidden></section>
+      <section id="lookupWarning" hidden></section>
+      <section id="mergeWarning" hidden></section>
+
+      <div class="cw-table-scroll preview-table-wrap" tabindex="0" role="region" aria-label="상품 명령 결과">
+        <table class="cw-data-table preview-table">
+          <thead>
+            <tr><th>UID</th><th>DataVersion</th><th>기존 동일 키</th><th>병합 후 등록 JSON</th><th>반대 키</th><th>요청 ID</th></tr>
+          </thead>
+          <tbody id="previewRows"></tbody>
+        </table>
+      </div>
+
+      <div class="execution-options">
+        <label class="confirm-check compact-check cw-check-control">
+          <input id="dryRunCheck" class="cw-checkbox" type="checkbox" checked>
+          <span><strong>Dry Run</strong> — 실제 PlayFab 쓰기 없이 UserReadOnlyData 재조회와 결과 흐름만 확인합니다.</span>
+        </label>
+        <label id="mergeCheckWrap" class="confirm-check compact-check cw-check-control hidden">
+          <input id="mergeCheck" class="cw-checkbox" type="checkbox">
+          <span>UID별 <strong>기존 명령 → 병합 후 등록 JSON</strong>을 확인했으며 병합 저장을 승인합니다. 미리보기 이후 값 또는 DataVersion이 바뀌면 이 승인은 무효입니다.</span>
+        </label>
+      </div>
+
+      <div class="form-actions execute-actions">
+        <span id="previewExpiresText" class="muted"></span>
+        <button id="openConfirmButton" type="button" class="cw-button" data-variant="danger">실행 확인</button>
+      </div>
+    </section>
+
+    <section id="resultCard" class="card hidden">
+      <div class="card-heading">
+        <div>
+          <p class="step">처리 결과</p>
+          <h2 id="resultSummary">-</h2>
+        </div>
+        <div class="inline-actions result-actions">
+          <button id="retryFailedButton" type="button" class="cw-button hidden">실패 UID만 다시 실행</button>
+          <button id="downloadCsvButton" type="button" class="cw-button">CSV 다운로드</button>
+        </div>
+      </div>
+      <div class="cw-table-scroll result-table-wrap" tabindex="0" role="region" aria-label="상품 명령 결과">
+        <table class="cw-data-table">
+          <thead>
+            <tr><th>UID</th><th>요청 ID</th><th>상태</th><th>DataVersion</th><th>PlayFab 오류</th><th>상세</th></tr>
+          </thead>
+          <tbody id="resultRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    </div>
+
+    <div id="managePanel" role="tabpanel" aria-labelledby="manageTab" hidden>
+    <section class="card manage-card">
+      <div class="card-heading">
+        <div>
+          <p class="step">대기 명령 관리</p>
+          <h2>현재 지급·회수 UserReadOnlyData 조회</h2>
+        </div>
+        <span id="manageEnvironmentText" class="muted">선택 서버 기준</span>
+      </div>
+      <div class="cw-form-fields">
+        <label class="cw-form-wide cw-form-field">
+          <span>PlayFab UID</span>
+          <textarea id="manageUidInput" rows="4" spellcheck="false" placeholder="조회할 UID를 입력" class="cw-form-control"></textarea>
+        </label>
+        <label class="cw-form-wide cw-form-field">
+          <span>삭제 사유</span>
+          <input id="manageMemo" maxlength="500" autocomplete="off" placeholder="수동 삭제 시 감사 로그에 기록할 사유" class="cw-form-control">
+        </label>
+      </div>
+      <div class="form-actions manage-actions">
+        <button id="lookupButton" type="button" class="cw-button">현재 명령 조회</button>
+      </div>
+      <section id="manageMessageBox" hidden></section>
+      <div id="manageResultWrap" class="cw-table-scroll hidden" tabindex="0" role="region" aria-label="상품 명령 결과">
+        <table class="cw-data-table manage-table">
+          <thead><tr><th>UID</th><th>종류</th><th>DataVersion</th><th>현재 JSON</th><th>최근 변경</th><th>작업</th></tr></thead>
+          <tbody id="manageRows"></tbody>
+        </table>
+      </div>
+    </section>
+    </div>
+
+    </fieldset>
+        <footer>PlayFab Secret Key는 서버에서만 사용되며 브라우저·API 응답·감사 로그에 포함하지 않습니다.</footer>
+      </main>
+    </div>
+  </div>
+
+</body>
+</html>

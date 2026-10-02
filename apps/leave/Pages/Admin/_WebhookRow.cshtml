@@ -1,0 +1,12 @@
+@model LeaveManager.Models.DiscordWebhook
+<tr data-webhook-row="@Model.Id">
+    <td data-webhook-memo>@(string.IsNullOrWhiteSpace(Model.Memo) ? "-" : Model.Memo)</td>
+    <td><code data-webhook-url>@LeaveManager.Pages.Admin.NotificationSettingsModel.Mask(Model.Url)</code></td>
+    <td data-webhook-created>@LeaveManager.Services.AppTime.ToKst(Model.CreatedAtUtc).ToString("yyyy-MM-dd HH:mm")</td>
+    <td>
+        <form method="post" asp-antiforgery="true" asp-page="/Admin/NotificationSettings" asp-page-handler="Delete" data-webhook-action="Delete">
+            <input type="hidden" name="id" value="@Model.Id" />
+            <button class="cw-button" data-variant="danger" data-size="compact" type="submit">삭제</button>
+        </form>
+    </td>
+</tr>

@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>플레이어 데이터 · CS</title>
+  <script src="https://company.example.com/js/company-workspace.js?v=a1b88b90a3ac4e17"></script>
+
+  <script src="/theme.js?v=20260908.1"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260908.1">
+  <link rel="stylesheet" href="/player-data.css?v=20260910.3" data-cs-page-style>
+  <link rel="stylesheet" href="/theme.css">
+  <script type="module" src="/player-data.js?v=20260910.3" data-cs-page-module></script>
+  <script type="module" src="/cs-navigation.js"></script>
+<link rel="stylesheet" href="https://company.example.com/css/company-workspace.css?v=a1b88b90a3ac4e17">
+</head>
+<body>
+  <div data-company-workspace data-company-service="cs"></div>
+  <div class="app-frame">
+    <aside class="app-sidebar cw-sidebar" data-workspace-navigation="cs"></aside>
+
+    <div class="workspace" data-workspace-view="cs.players">
+      <header class="workspace-topbar"><div class="breadcrumbs"><span>CS Console</span><b>/</b><strong>플레이어 데이터</strong></div><div id="modeBadge" class="cw-state-pill" data-tone="neutral">설정 확인 중</div></header>
+      <main class="workspace-content workspace-wide">
+        <header class="page-header">
+          <div class="page-title-icon data-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3Zm-8 3v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6m-16 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></div>
+          <div><p class="eyebrow">PlayFab player data</p><h1>플레이어 데이터</h1><p class="description">UID의 플레이어 데이터, 읽기 전용 데이터, 내부 데이터를 조회하고 편집합니다. UserData의 압축된 <strong>SaveData는 자동으로 풀어서</strong> 보여줍니다.</p></div>
+        </header>
+
+        <section class="context-grid data-context">
+          <section class="cw-callout" data-tone="info" role="note"><strong>세 가지 데이터 저장소</strong><p>UserData, UserReadOnlyData, UserInternalData의 모든 키를 저장소별로 관리합니다.</p></section>
+          <section class="cw-callout" data-tone="warning" role="note"><strong>동시 편집 보호</strong><p>저장 직전에 PlayFab 값을 다시 확인하며 달라졌다면 저장을 중단합니다.</p></section>
+          <section class="cw-callout" data-tone="neutral" role="note"><strong>SaveData 압축</strong><p><code>gzip-v1:{원본바이트수}:{Base64}</code>를 검증·해제하고 저장 시 압축 키로 전환합니다.</p></section>
+        </section>
+
+        <section id="messageBox" hidden></section>
+        <div id="mutationState" hidden></div>
+
+        <fieldset id="interactionFields" class="data-interaction-fields" aria-label="플레이어 데이터 작업">
+        <section class="card lookup-card">
+          <div class="card-heading"><div><p class="step">STEP 1</p><h2>플레이어 조회</h2></div><span id="environmentMeta" class="muted">PlayFab 설정 확인 중</span></div>
+          <form id="lookupForm" class="lookup-form">
+            <label class="cw-form-field"><span>PlayFab 서버</span><select id="environmentSelect" class="cw-form-control"><option value="live">라이브 서버</option><option value="test">테스트 서버</option></select></label>
+            <label class="cw-form-field"><span>PlayFab UID</span><input id="playFabIdInput" maxlength="64" autocomplete="off" spellcheck="false" placeholder="예: A2404D2EFA59A7EB" class="cw-form-control" aria-describedby="playFabIdError"><small id="playFabIdError" class="cw-field-error" hidden></small></label>
+            <button id="lookupButton" type="submit" class="cw-button" data-variant="primary">전체 데이터 조회</button>
+          </form>
+        </section>
+
+        <section id="editorCard" class="card editor-card hidden">
+          <div class="card-heading data-list-heading">
+            <div><p class="step">STEP 2</p><h2><span id="targetUid">-</span> 전체 플레이어 데이터</h2><p id="dataSummary" class="muted">세 저장소를 불러오는 중입니다.</p></div>
+            <div class="data-list-actions">
+              <label class="key-filter cw-form-field"><span>데이터 키 검색</span><input id="keyFilterInput" type="search" placeholder="세 저장소에서 키 또는 값 검색" autocomplete="off" class="cw-form-control"></label>
+              <button id="refreshButton" type="button" class="cw-button">새로고침</button>
+            </div>
+          </div>
+
+          <div id="dataStoresContainer" class="data-stores-container"></div>
+
+          <section id="detailPanel" class="detail-panel" hidden aria-labelledby="detailTitle">
+            <div class="detail-heading">
+              <div><p class="step">DETAIL</p><h3 id="detailTitle"><span id="keyMeta">-</span> 상세보기</h3></div>
+              <button id="closeDetailButton" type="button" class="cw-button" aria-label="상세보기 닫기" data-variant="quiet" data-size="compact" data-layout="icon">×</button>
+            </div>
+
+            <dl class="data-meta">
+              <div><dt>DataVersion</dt><dd id="versionMeta">-</dd></div>
+              <div><dt>저장 크기</dt><dd id="sizeMeta">-</dd></div>
+              <div><dt>마지막 변경</dt><dd id="updatedMeta">-</dd></div>
+              <div><dt>데이터 형식</dt><dd id="formatMeta">-</dd></div>
+              <div><dt>압축 형식</dt><dd id="compressionMeta">-</dd></div>
+              <div><dt>PlayFab 권한</dt><dd id="permissionMeta">-</dd></div>
+            </dl>
+
+            <div class="editor-toolbar">
+              <div><span id="jsonStatus" class="json-status">값 확인 중</span><span id="changeStatus" class="muted"></span><span id="diffSummary" class="diff-summary hidden"></span></div>
+              <div class="inline-actions">
+                <span id="diffNavigator" class="diff-navigator hidden" role="group" aria-label="변경 위치 이동">
+                  <button id="previousChangeButton" type="button" class="cw-button" title="이전 변경 위치 (Alt+↑)" aria-label="이전 변경 위치" data-variant="quiet" data-size="compact" data-layout="icon">↑</button>
+                  <span id="changePosition" class="diff-position" aria-live="polite">0곳</span>
+                  <button id="nextChangeButton" type="button" class="cw-button" title="다음 변경 위치 (Alt+↓)" aria-label="다음 변경 위치" data-variant="quiet" data-size="compact" data-layout="icon">↓</button>
+                </span>
+                <button id="formatButton" type="button" class="cw-button" data-size="compact">JSON 정리</button><button id="resetButton" type="button" class="cw-button" data-size="compact">원본 복원</button>
+              </div>
+            </div>
+            <label class="editor-label cw-form-field"><span class="sr-only">플레이어 데이터 값</span><span class="json-editor-shell"><canvas id="jsonDiffLayer" class="json-diff-layer" aria-hidden="true"></canvas><textarea id="jsonEditor" class="json-editor cw-form-control" rows="22" wrap="off" spellcheck="false" autocomplete="off"></textarea></span></label>
+
+            <section class="save-panel">
+              <div class="save-fields">
+                <label class="cw-form-field"><span>처리 사유 / 문의 번호</span><input id="reasonInput" maxlength="500" autocomplete="off" placeholder="예: CS-20260818-001 데이터 복구" class="cw-form-control"></label>
+              </div>
+              <label class="confirm-check cw-check-control"><input id="confirmCheck" class="cw-checkbox" type="checkbox"><span><strong id="confirmTargetText">대상 UID</strong>의 <strong id="confirmKeyText">데이터</strong>를 변경하며, 되돌리려면 별도 복구가 필요함을 확인했습니다.</span></label>
+              <div class="save-actions"><span id="writeNotice" class="muted"></span><button id="saveButton" type="button" class="cw-button" disabled data-variant="danger">변경사항 저장</button></div>
+            </section>
+          </section>
+        </section>
+        </fieldset>
+      </main>
+    </div>
+  </div>
+
+  <dialog id="addDialog" class="cw-review data-dialog" aria-labelledby="addTitle">
+    <form id="addForm" class="cw-dialog-form">
+      <fieldset id="addFields" class="data-interaction-fields" aria-label="데이터 추가">
+      <header><h2 id="addTitle"><span id="addStoreText">플레이어 데이터</span> 추가</h2><p>키와 값을 입력하면 <strong id="addStorePlayFabName">UserData</strong>에 새 항목을 만듭니다.</p></header>
+      <div class="dialog-fields cw-review-body">
+        <div id="addState" hidden></div>
+        <label class="cw-form-field"><span>데이터 키</span><input id="addKeyInput" maxlength="200" autocomplete="off" spellcheck="false" placeholder="예: TutorialProgress" required class="cw-form-control"></label>
+        <label class="cw-form-field"><span>값</span><textarea id="addValueInput" class="dialog-value-editor cw-form-control" rows="10" spellcheck="false" placeholder="일반 문자열 또는 JSON" required></textarea></label>
+        <div class="value-hint"><span id="addValueStatus" class="json-status">값을 입력해 주세요.</span><button id="formatAddValueButton" type="button" class="cw-button" data-size="compact">JSON 정리</button></div>
+        <label class="cw-form-field"><span>처리 사유 / 문의 번호</span><input id="addReasonInput" maxlength="500" autocomplete="off" placeholder="예: CS-20260818-001 누락 데이터 생성" required class="cw-form-control"></label>
+        <label class="confirm-check cw-check-control"><input id="addConfirmCheck" class="cw-checkbox" type="checkbox"><span><strong id="addTargetText">대상 UID</strong>에 새 키를 추가함을 확인했습니다.</span></label>
+      </div>
+      <footer><button type="button" data-close-dialog="addDialog" class="cw-button">취소</button><button id="addSubmitButton" type="submit" data-review-apply disabled class="cw-button" data-variant="primary">데이터 추가</button></footer>
+      </fieldset>
+    </form>
+  </dialog>
+
+  <dialog id="deleteDialog" class="cw-review data-dialog" aria-labelledby="deleteTitle">
+    <form id="deleteForm" class="cw-dialog-form">
+      <fieldset id="deleteFields" class="data-interaction-fields" aria-label="데이터 삭제">
+      <header><h2 id="deleteTitle"><span id="deleteStoreText">플레이어 데이터</span> 삭제</h2><p><strong id="deleteKeyText">-</strong> 키와 값이 PlayFab에서 제거됩니다.</p></header>
+      <div class="cw-review-body">
+      <div id="deleteState" hidden></div>
+      <div class="delete-preview"><span>삭제할 키</span><strong id="deleteKeyPreview">-</strong><small id="deleteValuePreview">-</small></div>
+      <div class="dialog-fields">
+        <label class="cw-form-field"><span>삭제 사유 / 문의 번호</span><input id="deleteReasonInput" maxlength="500" autocomplete="off" placeholder="예: CS-20260818-001 잘못 생성된 데이터 삭제" required class="cw-form-control"></label>
+        <label class="confirm-check cw-check-control"><input id="deleteConfirmCheck" class="cw-checkbox" type="checkbox"><span><strong id="deleteTargetText">대상 UID</strong>의 <strong id="deleteConfirmKeyText">데이터</strong>를 영구 삭제함을 확인했습니다.</span></label>
+      </div>
+      </div>
+      <footer><button type="button" data-close-dialog="deleteDialog" class="cw-button">취소</button><button id="deleteSubmitButton" type="submit" data-tone="danger" disabled class="cw-button" data-variant="danger">영구 삭제</button></footer>
+      </fieldset>
+    </form>
+  </dialog>
+</body>
+</html>

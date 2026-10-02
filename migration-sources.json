@@ -1,0 +1,90 @@
+{
+  "format": 1,
+  "sources": [
+    {
+      "name": "portal",
+      "folder": "company-portal",
+      "remote": "https://github.com/company-org/company-portal.git",
+      "commit": "b287f93611b6653e77954312d5d686ba57465f8b",
+      "tree": "83f78f518d67ea9bf46fa2073b9c4b40a620694c",
+      "refs": [
+        "refs/heads/main b287f93611b6653e77954312d5d686ba57465f8b",
+        "refs/heads/organization-management e818390ed8ad3d62073cababdf8115483977eff3"
+      ]
+    },
+    {
+      "name": "leave",
+      "folder": "LeaveManager",
+      "remote": "https://github.com/company-org/leave-system.git",
+      "commit": "6465b0a632b71d79bbb3cbd5e546411a742865de",
+      "tree": "e50ac51926990b10ec1c5edf57a617ab864de7ac",
+      "refs": [
+        "refs/heads/main 6465b0a632b71d79bbb3cbd5e546411a742865de",
+        "refs/heads/schedule-read-api-review 6f24aca7ce40de9360ec38890c3e4b6405763236"
+      ]
+    },
+    {
+      "name": "schedule",
+      "folder": "schedule",
+      "remote": "https://github.com/company-org/schedule.git",
+      "commit": "0ccdaff5a3bf8f6cd25cdac44fa56b2d1d145f8f",
+      "tree": "8d4a4c7c5594a59fbb5119d0647efe1246a6d3e7",
+      "refs": [
+        "refs/heads/date-navigation 6c55af586307e3c9c3747db3a7b171c1c369a6ee",
+        "refs/heads/full-images f622f2da46430e34644c3ec1cdd5212049dd1072",
+        "refs/heads/holiday-date-picker 88d2dfd1f1c14ef6b8b7c33e246a5fde06914440",
+        "refs/heads/main 0ccdaff5a3bf8f6cd25cdac44fa56b2d1d145f8f",
+        "refs/heads/milestone-details 40f10aef43813d743120e2733f8a83034c4d8d68",
+        "refs/heads/milestone-projects 8bc86c8cdef33a33310803122f3787f95b43e52f",
+        "refs/heads/private-todos 0ccdaff5a3bf8f6cd25cdac44fa56b2d1d145f8f",
+        "refs/heads/release-sheet-migration 399a50af3e22add2ec9070b689e89fe0b1a2f35b",
+        "refs/heads/schedule-feedback 6de73d282ccc0ed5b206ffc2f98af3af91197a01",
+        "refs/heads/schedule-overview a6d12a2b8a5252fa817cfb461b2db4ed273cf6d9",
+        "refs/heads/targets-releases a6b19b0bb4e59a133761377d52f540da30779464",
+        "refs/heads/task-author 4bd34f900977e38e3e95113a34a1839c083a681f",
+        "refs/heads/task-created-at 9265dd9b041a7bb3dfcb61f5fd6769b2d4a6377c",
+        "refs/heads/task-link-previews f585e8de1ae5fcd533c0ab2a0eff73d1aaacc675"
+      ]
+    },
+    {
+      "name": "cs",
+      "folder": "CS",
+      "remote": "https://github.com/company-org/CS.git",
+      "commit": "69d724ef6221fa3310f771331f3040b3d35b69f0",
+      "tree": "26f26cd519efad36deff9afd0af8495e127c6c81",
+      "refs": [
+        "refs/heads/main 69d724ef6221fa3310f771331f3040b3d35b69f0"
+      ]
+    },
+    {
+      "name": "statistics",
+      "folder": "statistics",
+      "remote": "https://github.com/company-org/statistics.git",
+      "commit": "defb7838ab70152d42a949fa909d3f1d5473e0e1",
+      "tree": "f7c1b17c653324586231fbbaf459ca5dfa2a3e41",
+      "refs": [
+        "refs/heads/main defb7838ab70152d42a949fa909d3f1d5473e0e1"
+      ]
+    },
+    {
+      "name": "sheet",
+      "folder": "sheet",
+      "remote": "https://github.com/company-org/sheet.git",
+      "commit": "2bbb06354ff153bf4a84994d07f320d963f8a37d",
+      "tree": "ce8f5a940db0718f50d02555b71ca8a5c6b9c7d2",
+      "refs": [
+        "refs/heads/main 2bbb06354ff153bf4a84994d07f320d963f8a37d"
+      ]
+    },
+    {
+      "name": "iap",
+      "folder": "product-upload",
+      "remote": "https://github.com/company-org/product-upload.git",
+      "commit": "1a9bd90d22074eb3bb320a7971d17f857a067539",
+      "tree": "beee5dde8132c7ed9e258032c18a08f1cdeab195",
+      "refs": [
+        "refs/heads/main 1a9bd90d22074eb3bb320a7971d17f857a067539"
+      ]
+    }
+  ]
+}

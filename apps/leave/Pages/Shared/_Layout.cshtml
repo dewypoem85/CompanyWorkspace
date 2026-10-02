@@ -1,0 +1,79 @@
+@using LeaveManager.Services
+@using LeaveManager.Workspace
+@using LeaveManager.Data
+@using LeaveManager.Models
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext LayoutDb
+@inject IConfiguration LayoutConfiguration
+@{
+    var layoutIsAuthenticated = User.Identity?.IsAuthenticated == true;
+    var layoutHasEmployeeClaim = layoutIsAuthenticated && User.HasClaim(c => c.Type == "EmployeeId");
+    var layoutEmployeeIdText = User.FindFirst("EmployeeId")?.Value;
+    long.TryParse(layoutEmployeeIdText, out var layoutEmployeeId);
+
+    var workspacePage = WorkspacePages.Resolve(ViewContext.RouteData.Values["page"] as string, Context.Request.Query);
+    var layoutEmployeeMap = layoutHasEmployeeClaim
+        ? await LayoutDb.Employees.AsNoTracking().Where(e => e.CompanyUserId != null && (!e.IsPrivate || e.Id == layoutEmployeeId || User.IsInRole("Admin"))).ToDictionaryAsync(e => e.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), e => e.CompanyUserId!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))
+        : new Dictionary<string, string>();
+    var layoutPortalBaseUrl = (LayoutConfiguration["CompanyPortal:BaseUrl"] ?? "https://company.example.com").Trim().TrimEnd('/');
+}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(workspacePage?.Title ?? ViewData["Title"]) - 연차관리</title>
+    <script src="https://company.example.com/js/company-workspace.js?v=a1b88b90a3ac4e17"></script>
+<link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/leave-record-tables.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://company.example.com/css/company-workspace.css?v=a1b88b90a3ac4e17" />
+</head>
+<body>
+<script type="application/json" data-company-employee-map>@Html.Raw(System.Text.Json.JsonSerializer.Serialize(layoutEmployeeMap))</script>
+<div data-company-workspace data-company-service="leave" data-company-portal-url="@layoutPortalBaseUrl"></div>
+@if (layoutHasEmployeeClaim)
+{
+<aside class="cw-sidebar" data-workspace-navigation="leave"></aside>
+}
+<main class="cw-main" data-workspace-view="@workspacePage?.Id" data-workspace-identity="@(User.FindFirst("CompanyUserId")?.Value)" data-workspace-role="@(User.IsInRole("Master") ? "master" : User.IsInRole("Admin") ? "admin" : "employee")">@RenderBody()</main>
+<script src="~/js/leave-navigation.js" asp-append-version="true"></script>
+<div data-workspace-page-scripts hidden>@await RenderSectionAsync("Scripts", required: false)</div>
+<script src="~/js/mobile-tables.js" asp-append-version="true"></script>
+<script>
+(function(){
+    function submitPreference(form) {
+        const url = new URL(window.location.href);
+        url.search = new URLSearchParams(new FormData(form)).toString();
+        const check = form.querySelector('input[data-calendar-preference-toggle="true"]');
+        const partialUrl = new URL(url);
+        partialUrl.searchParams.delete(check.name);
+        partialUrl.searchParams.set(check.name, String(check.checked));
+        const change = new CustomEvent('leave-calendar-preference-change', {
+            cancelable: true,
+            detail: { url: partialUrl.href, toggle: check }
+        });
+        if (!document.dispatchEvent(change)) return;
+        window.location.href = url.toString();
+    }
+
+    function enhanceCalendarPreferenceToggle() {
+        const form = document.getElementById('calendarMoveForm');
+        if (!form) return;
+        const check = form.querySelector('input[data-calendar-preference-toggle="true"]');
+        if (!check || check.dataset.preferenceBound === 'true') return;
+        check.dataset.preferenceBound = 'true';
+        check.addEventListener('change', event => {
+            event.stopImmediatePropagation();
+            submitPreference(form);
+        }, true);
+    }
+
+    enhanceCalendarPreferenceToggle();
+    const observer = new MutationObserver(enhanceCalendarPreferenceToggle);
+    observer.observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+
+</body>
+</html>

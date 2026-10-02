@@ -1,0 +1,7 @@
+/* Domain widths only. The shared table owns rows, cells, mobile cards and theme states. */
+.usage-filter-action { align-self:end; }
+.cw-data-table[data-layout] .work-plan-preview { min-width:0; max-width:100%; }
+@media (min-width:721px) {
+  .usage-table { min-width:800px; }
+  .employee-table { min-width:760px; }
+}

@@ -1,0 +1,12 @@
+bin/
+obj/
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+!.env.example
+/data/backups/
+/data-keys/
+/backups/
+/backup/

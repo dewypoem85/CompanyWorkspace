@@ -1,0 +1,66 @@
+@model CompanyPortal.Models.AccountFieldView
+@{
+    var field = Model.Field;
+    var value = Model.Input;
+    var selectedProjects = (value.ProjectIds ?? []).ToHashSet();
+}
+@switch (field.Key)
+{
+    case "Name":
+    case "Email":
+        <label class="cw-form-field" data-account-field="@field.Key"><span>@field.Label</span><input class="cw-form-control" name="@Model.Name" type="@(field.Key == "Email" ? "email" : "text")" value="@(field.Key == "Email" ? value.Email : value.Name)" required maxlength="@field.MaxLength" autocomplete="@(field.Key == "Email" ? "email" : "name")" aria-label="@Model.AccessibleLabel" /></label>
+        break;
+    case "AccountType":
+        <label class="cw-form-field" data-account-field="@field.Key"><span class="@(Model.Compact ? "sr-only" : "")">@field.Label</span><select name="@Model.Name" class="cw-form-control account-type-select" aria-label="@Model.AccessibleLabel"><option value="employee" selected="@(!Model.Shared)">실제 직원</option><option value="shared" selected="@Model.Shared">공용 테스트 계정</option></select></label>
+        break;
+    case "IsActive":
+        <label class="cw-form-field" data-account-field="@field.Key"><span class="@(Model.Compact ? "sr-only" : "")">@field.Label</span><select name="@Model.Name" class="cw-form-control status-select" aria-label="@Model.AccessibleLabel"><option value="true" selected="@value.IsActive">활성</option><option value="false" selected="@(!value.IsActive)">비활성</option></select></label>
+        break;
+    case "Role":
+        <label class="cw-form-field" data-account-field="@field.Key"><span class="@(Model.Compact ? "sr-only" : "")">@field.Label</span>
+        @if (Model.Page.ActorIsMaster)
+        {
+            <select name="@Model.Name" class="cw-form-control role-select" aria-label="@Model.AccessibleLabel" disabled="@Model.Shared"><option value="employee" selected="@(value.Role == "employee")">직원</option><option value="admin" selected="@(value.Role == "admin")">관리자</option><option value="master" selected="@(value.Role == "master")">마스터</option></select>
+        }
+        else
+        {
+            <input type="hidden" name="@Model.Name" value="employee" /><span class="role-label">직원 · 역할 지정은 회사 마스터 전용</span>
+        }
+        </label>
+        break;
+    case "DepartmentId":
+        <label class="cw-form-field" data-account-field="@field.Key"><span>@field.Label</span><select class="cw-form-control" name="@Model.Name" aria-label="@Model.AccessibleLabel" disabled="@Model.Shared"><option value="">미지정</option>@foreach (var d in Model.Page.DepartmentChoicesFor(value)) { <option value="@d.Id" selected="@(d.Id == value.DepartmentId)">@d.Name @(d.Archived ? "· 보관됨" : "")</option> }</select></label>
+        break;
+    case "HireDate":
+        <label class="cw-form-field" data-account-field="@field.Key"><span>@field.Label</span><input class="cw-form-control" name="@Model.Name" type="date" value="@value.HireDate?.ToString("yyyy-MM-dd")" required="@(!Model.Shared)" disabled="@Model.Shared" aria-label="@Model.AccessibleLabel" /></label>
+        break;
+    case "BirthDate":
+        <label class="cw-form-field" data-account-field="@field.Key"><span>@field.Label (월-일)</span><input class="cw-form-control" name="@Model.Name" type="text" inputmode="numeric" value="@value.BirthDate" placeholder="MM-DD" pattern="(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])" maxlength="5" disabled="@Model.Shared" aria-label="@Model.AccessibleLabel" /><small>연도 없이 월-일만 입력하세요. 예: 08-17 · 연차 달력의 생일 표시에만 사용됩니다.</small></label>
+        break;
+    case "ProjectIds":
+        <fieldset class="account-projects cw-choice-group" data-account-field="@field.Key" data-workspace-choices="project"><legend>@field.Label</legend><label class="cw-form-field"><span>프로젝트 검색</span><input class="cw-form-control" type="search" data-choice-search placeholder="이름·초성으로 검색" aria-label="@(Model.AccessibleLabel + " 검색")" /></label>
+        @foreach (var p in Model.Page.ProjectChoicesFor(value))
+        {
+            <label data-choice-label><input type="checkbox" name="@Model.Name" value="@p.Id" checked="@selectedProjects.Contains(p.Id)" disabled="@Model.Shared" /><span class="cw-entity-avatar" data-company-project="@p.Id">P</span><span data-choice-text>@p.Name @(p.IsPrivate ? "· 비공개" : "") @(p.Archived ? "· 보관됨" : "")</span></label>
+        }
+        </fieldset>
+        break;
+    case "IsPrivate":
+        <label class="account-privacy cw-check-control" data-account-field="@field.Key"><input class="cw-checkbox" type="checkbox" name="@Model.Name" value="true" checked="@value.IsPrivate" aria-label="@Model.AccessibleLabel" /><span><b>@field.Label</b><small>일반 직원의 명단에는 표시하지 않습니다. 관리자는 조회할 수 있습니다.</small></span></label>
+        break;
+    case "Permissions":
+        var options = Model.Permission is null ? Model.Page.ConfigurableSystems : new[] { Model.Permission };
+        <div class="@(Model.Compact ? "" : "option-grid")" data-account-field="@field.Key">
+        @foreach (var system in options)
+        {
+            var allowed = (value.Permissions ?? []).Contains(system.AccessPermission);
+            <label class="@(Model.Compact ? "permission-switch cw-switch-control" : "option-card cw-check-control")"><input class="@(Model.Compact ? "cw-switch" : "cw-checkbox")" type="checkbox" role="@(Model.Compact ? "switch" : null)" name="@Model.Name" value="@system.AccessPermission" checked="@allowed" data-permission="@system.AccessPermission" aria-label="@(Model.PersonName + " " + system.Name + " 접근")" />
+            @if (Model.Compact) { <i class="cw-switch-track" aria-hidden="true"></i><small class="explicit-label">@(allowed ? "허용" : "차단")</small><small class="inherited-label">전체</small> }
+            else { <span><b>@system.Name 접근</b><small>@system.Description</small></span> }
+            </label>
+        }
+        </div>
+        break;
+    default:
+        throw new InvalidOperationException($"계정 필드 렌더러를 등록하세요: {field.Key}");
+}

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "workflow": ".github/workflows/verify.yml",
+  "requiredJob": "required",
+  "jobs": {
+    "shared-ui": {"commands": ["npm ci --ignore-scripts", "npm audit --audit-level=low --include=dev --include=optional --registry=https://registry.npmjs.org", "npm run check"]},
+    "node-apps": {"apps": ["cs", "statistics"], "commands": ["npm ci --ignore-scripts", "npm audit --audit-level=low --include=dev --include=optional --registry=https://registry.npmjs.org", "npm run check", "npm test"]},
+    "dotnet-apps": {"apps": ["portal", "leave"], "commands": ["dotnet build --configuration Release"]},
+    "frontend-apps": {"apps": ["schedule", "sheet", "iap"], "commands": ["npm ci --ignore-scripts", "npm audit --audit-level=low --include=dev --include=optional --registry=https://registry.npmjs.org", "npm test", "npm run build"], "conditionalCommands": {"npm run typecheck": "matrix.app == 'sheet'", "npm run test:runtime": "matrix.app == 'sheet'"}},
+    "integration": {"commands": ["npm ci --ignore-scripts --prefix apps/schedule", "npm run build --prefix apps/schedule", "dotnet test apps/schedule/tests/Schedule.Tests.csproj -c Release", "dotnet test apps/schedule/integration-tests/CompanyIntegration.Tests.csproj -c Release", "python3 apps/schedule/scripts/test-import-release-sheet.py"]},
+    "images": {"apps": ["portal", "leave", "schedule", "cs", "statistics", "sheet", "iap"], "requiredUses": ["actions/checkout@v7", "actions/setup-node@v7", "actions/upload-artifact@v7"], "commands": ["docker build -t workspace-${{ matrix.app }}:verify apps/${{ matrix.app }}", "node tooling/container-smoke.mjs --service ${{ matrix.app }} --image workspace-${{ matrix.app }}:verify", "node tooling/image-verification-record.mjs --service ${{ matrix.app }} --image workspace-${{ matrix.app }}:verify"]},
+    "browser": {"commands": ["npm ci --ignore-scripts", "npx playwright install --with-deps chromium", "npm ci --ignore-scripts --prefix apps/sheet", "npm ci --ignore-scripts --prefix apps/schedule", "npm ci --ignore-scripts --prefix apps/iap", "npm run test:browser"]},
+    "android": {"requiredUses": ["actions/checkout@v7", "actions/setup-java@v5", "gradle/actions/setup-gradle@v5", "actions/upload-artifact@v7"], "commands": ["bash gradlew :app:testDebugUnitTest :app:assembleDebug"]}
+  }
+}

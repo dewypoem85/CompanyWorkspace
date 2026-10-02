@@ -1,0 +1,27 @@
+.steam-fields { border: 0; padding: 0; margin: 0; min-width: 0; align-items: start; }
+#refundCard { border-color: var(--cw-danger); background: var(--cw-surface); }
+#refundCard .danger-text { color: var(--cw-danger); }
+#resultCard .cw-data-table { min-width: 920px; }
+#resultCard :is(dd,td) { overflow-wrap: anywhere; }
+#refundCard small, #queryForm small { color: var(--cw-muted); font-size: 12px; line-height: 1.6; }
+.query-guide { margin: 0; color: var(--cw-muted); font-size: 13px; line-height: 1.6; }
+#historyCard > .cw-table-scroll > .cw-data-table { min-width: 1040px; }
+#historyCard .muted { margin: -4px 0 16px; }
+#historyCard td { overflow-wrap: anywhere; }
+#historyCard .cw-button { white-space: nowrap; }
+.history-products { min-width: 180px; display: grid; gap: 4px; }
+.history-products strong { color: var(--cw-text); }
+.history-products small { color: var(--cw-muted); }
+.history-detail-row > td { padding: 0 8px 12px; }
+.history-detail { border: 1px solid var(--cw-line); border-radius: 14px; background: var(--cw-raised); padding: 18px; }
+.history-detail-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 0 0 16px; }
+.history-detail-grid div { min-width: 0; }
+.history-detail-grid dt { color: var(--cw-muted); font-size: 12px; }
+.history-detail-grid dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+.history-items-table { min-width: 920px; }
+.history-detail-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 16px; }
+.history-detail-actions p { margin: 0; color: var(--cw-muted); font-size: 13px; line-height: 1.6; }
+.history-detail-actions .cw-button { flex: 0 0 auto; }
+.product-unknown { color: var(--cw-warning); font-weight: 700; }
+.invalid-value { color: var(--cw-danger); font-weight: 700; }
+@media (max-width: 720px) { .history-detail-grid { grid-template-columns: 1fr; } .history-detail { padding: 14px; } .history-detail-actions { align-items: stretch; flex-direction: column; } }

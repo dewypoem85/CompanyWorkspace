@@ -1,0 +1,11 @@
+node_modules
+.git
+.cache
+data
+server/bin
+server/obj
+server/wwwroot
+tests
+integration-tests
+.env
+*.log

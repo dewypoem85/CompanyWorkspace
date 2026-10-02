@@ -1,0 +1,82 @@
+@model LeaveManager.Pages.Admin.IndexModel
+
+<div id="adminApprovalQueuesArea"
+     data-queue-summary-url="@Url.Page("Index", "QueueSummary")"
+     data-queue-url="@Url.Page("Index", "Queue")"
+     data-pending-count="@Model.Pending.Count"
+     data-cancel-pending-count="@Model.CancelPending.Count"
+     data-queue-version="@Model.QueueVersion">
+    <section class="admin-request-section">
+        <h2>승인 대기 <span class="section-count cw-count-badge">@Model.Pending.Count</span></h2>
+        <div class="cw-table-scroll" tabindex="0" role="region" aria-label="신청 내역 표"><table class="cw-data-table" data-layout="cards" role="table">
+            <thead><tr><th scope="col">직원</th><th scope="col">신청일</th><th scope="col">사용일</th><th scope="col">업무 일정</th><th scope="col">신청 일수</th><th scope="col">잔여</th><th scope="col">처리자</th><th scope="col">신청 사유</th><th scope="col">처리</th></tr></thead>
+            <tbody>
+            @foreach (var row in Model.Pending)
+            {
+                var r = row.Request;
+                <tr>
+                    <td data-label="직원"><div class="cw-table-value"><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="@r.Employee.Id">@System.Globalization.StringInfo.GetNextTextElement(r.Employee.Name)</span>@r.Employee.Name<br/><small>@r.Employee.Email</small>@if (r.IsAdvance) { <br/><span class="advance-badge cw-state-pill" data-tone="warning">@Model.AdvanceKindLabel(r)</span> }</div></td>
+                    <td data-label="신청일"><div class="cw-table-value">@Model.Kst(r.RequestedAtUtc)</div></td>
+                    <td data-label="사용일"><div class="cw-table-value">@string.Join(", ", r.Dates.OrderBy(x => x.Date).Select(x => $"{x.Date:yyyy-MM-dd} {Model.PortionName(x.Portion)}"))</div></td>
+                    <td data-label="업무 일정"><div class="cw-table-value"><div class="work-plan-preview">@r.WorkPlan</div></div></td>
+                    <td data-label="신청 일수"><div class="cw-table-value">@r.CalculatedDays@if (r.IsAdvance) { <br/><span class="advance-badge cw-state-pill" data-tone="warning">@Model.AdvanceBreakdownLabel(r)</span> }</div></td>
+                    <td data-label="잔여"><div class="cw-table-value">@row.Balance.Available</div></td>
+                    <td data-label="처리자"><div class="cw-table-value">@row.DecisionActorLabel</div></td>
+                    <td data-label="신청 사유"><div class="cw-table-value"><div class="work-plan-preview">@(string.IsNullOrWhiteSpace(r.Reason) ? "-" : r.Reason)</div></div></td>
+                    <td data-label="처리"><div class="cw-table-value">
+                    @if (r.EmployeeId == Model.CurrentEmployee.Id)
+                    {
+                        <span class="muted-text small-text">본인 신청은 다른 관리자가 처리</span>
+                    }
+                    else
+                    {
+                        <partial name="_ApprovalAction" model="@(new LeaveManager.Pages.Admin.ApprovalActionModel(r, Model.CurrentEmployee, "Decide", Model.WriteLocked))" />
+                    }
+                    </div></td>
+                </tr>
+            }
+            @if (Model.Pending.Count == 0)
+            {
+                <tr><td colspan="9" class="queue-empty muted-text" data-label=""><div class="cw-table-value">현재 승인 대기 중인 연차 신청이 없습니다.</div></td></tr>
+            }
+            </tbody>
+        </table></div>
+    </section>
+
+    <section class="admin-request-section">
+        <h2>취소 승인 대기 <span class="section-count cw-count-badge">@Model.CancelPending.Count</span></h2>
+        <div class="cw-table-scroll" tabindex="0" role="region" aria-label="신청 내역 표"><table class="cw-data-table" data-layout="cards" role="table">
+            <thead><tr><th scope="col">직원</th><th scope="col">취소 요청일</th><th scope="col">사용일</th><th scope="col">신청 사유</th><th scope="col">업무 일정</th><th scope="col">일수</th><th scope="col">잔여</th><th scope="col">처리자</th><th scope="col">처리</th></tr></thead>
+            <tbody>
+            @foreach (var row in Model.CancelPending)
+            {
+                var r = row.Request;
+                <tr>
+                    <td data-label="직원"><div class="cw-table-value"><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="@r.Employee.Id">@System.Globalization.StringInfo.GetNextTextElement(r.Employee.Name)</span>@r.Employee.Name<br/><small>@r.Employee.Email</small>@if (r.IsAdvance) { <br/><span class="advance-badge cw-state-pill" data-tone="warning">@Model.AdvanceKindLabel(r)</span> }</div></td>
+                    <td data-label="취소 요청일"><div class="cw-table-value">@(r.CancelRequestedAtUtc.HasValue ? Model.Kst(r.CancelRequestedAtUtc.Value) : "")</div></td>
+                    <td data-label="사용일"><div class="cw-table-value">@string.Join(", ", r.Dates.OrderBy(x => x.Date).Select(x => $"{x.Date:yyyy-MM-dd} {Model.PortionName(x.Portion)}"))</div></td>
+                    <td data-label="신청 사유"><div class="cw-table-value"><div class="work-plan-preview">@(string.IsNullOrWhiteSpace(r.Reason) ? "-" : r.Reason)</div></div></td>
+                    <td data-label="업무 일정"><div class="cw-table-value"><div class="work-plan-preview">@r.WorkPlan</div></div></td>
+                    <td data-label="일수"><div class="cw-table-value">@r.CalculatedDays@if (r.IsAdvance) { <br/><span class="advance-badge cw-state-pill" data-tone="warning">@Model.AdvanceBreakdownLabel(r)</span> }</div></td>
+                    <td data-label="잔여"><div class="cw-table-value">@row.Balance.Available</div></td>
+                    <td data-label="처리자"><div class="cw-table-value">@row.DecisionActorLabel</div></td>
+                    <td data-label="처리"><div class="cw-table-value">
+                    @if (r.EmployeeId == Model.CurrentEmployee.Id)
+                    {
+                        <span class="muted-text small-text">본인 취소 요청은 다른 관리자가 처리</span>
+                    }
+                    else
+                    {
+                        <partial name="_ApprovalAction" model="@(new LeaveManager.Pages.Admin.ApprovalActionModel(r, Model.CurrentEmployee, "CancelDecide", Model.WriteLocked))" />
+                    }
+                    </div></td>
+                </tr>
+            }
+            @if (Model.CancelPending.Count == 0)
+            {
+                <tr><td colspan="9" class="queue-empty muted-text" data-label=""><div class="cw-table-value">현재 취소 승인 대기 중인 신청이 없습니다.</div></td></tr>
+            }
+            </tbody>
+        </table></div>
+    </section>
+</div>

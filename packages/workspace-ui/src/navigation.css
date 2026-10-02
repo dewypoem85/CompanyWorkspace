@@ -1,0 +1,27 @@
+/* Navigation states use the same tokens in every app and both themes. */
+.cw-sidebar[hidden] { display:none !important; }
+[data-workspace-navigation-content] { display:flex; min-height:100%; flex:1 1 auto; flex-direction:column; }
+.cw-page-nav { display:flex; min-width:0; flex:1 1 auto; flex-direction:column; gap:6px; }
+.cw-page-section { display:flex; min-width:0; flex-direction:column; gap:6px; }
+.cw-page-section[data-navigation-section] { margin-top:auto; padding-top:18px; border-top:1px solid var(--cw-line); }
+.cw-page-section-label { padding:0 12px 2px; color:var(--cw-muted); font-size:11px; font-weight:800; letter-spacing:.08em; }
+.cw-page-nav .cw-page-link {
+  display:flex; align-items:center; gap:12px; padding:12px; border:1px solid transparent;
+  border-radius:10px; text-decoration:none; color:var(--cw-muted); background:transparent; min-width:0;
+}
+.cw-page-nav .cw-page-link:hover { background:var(--cw-hover); color:var(--cw-text); }
+.cw-page-nav .cw-page-link[aria-current="page"] { color:var(--cw-active-text); background:var(--cw-active); border-color:var(--cw-accent); }
+.cw-page-nav .cw-page-link:focus-visible { outline:2px solid var(--cw-accent); outline-offset:2px; }
+.cw-page-link svg { width:20px; height:20px; flex:none; fill:none; stroke:currentColor; stroke-width:1.6; }
+.cw-page-link span { min-width:0; }
+.cw-page-link strong { display:block; font-size:14px; line-height:1.5; }
+.cw-page-link small { display:block; margin-top:3px; font-size:12px; line-height:1.5; color:var(--cw-muted); }
+.cw-page-link [data-workspace-badge] { margin-inline-start:auto; flex:none; }
+.cw-page-link [data-workspace-badge][hidden] { display:none; }
+.cw-page-link[data-cw-page-loading]::after {
+  content:""; width:12px; height:12px; margin-inline-start:auto; flex:none;
+  border:2px solid var(--cw-line); border-top-color:var(--cw-accent); border-radius:50%;
+  animation:cw-page-loading .7s linear infinite;
+}
+@keyframes cw-page-loading { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { .cw-page-link[data-cw-page-loading]::after { animation:none; border-color:var(--cw-accent); } }

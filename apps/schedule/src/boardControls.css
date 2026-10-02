@@ -1,0 +1,78 @@
+/* Board geometry only. Control colors, selected/disabled states and sizes belong to workspace primitives. */
+.schedule-workspace button.cw-button.task-card,.schedule-workspace button.cw-button.milestone-chip{width:100%;grid-template-columns:minmax(0,1fr)}
+.schedule-workspace .grouping-switch{flex-wrap:nowrap;gap:2px;max-width:100%;border-color:var(--cw-line)}
+.schedule-workspace .filters>.cw-form-field{position:relative;display:block;flex:0 1 235px;min-width:180px;max-width:260px}
+.schedule-workspace .filters>.cw-form-field>span{position:absolute;z-index:1;top:5px;left:11px;font-size:.58rem;line-height:1;white-space:nowrap;color:var(--cw-muted);pointer-events:none}
+.schedule-workspace .timeline-zoom .cw-form-field>span{font-size:.7rem;line-height:1;white-space:nowrap;color:var(--cw-muted)}
+.schedule-workspace .filters .cw-form-control{min-height:44px;height:44px}
+.schedule-workspace .filters .cw-form-control{width:100%;padding-top:15px;padding-bottom:3px}
+.schedule-workspace .timeline-zoom .cw-form-field{position:relative;display:flex;flex-direction:row;align-items:center;gap:6px;min-width:0;margin:0}
+.schedule-workspace .timeline-zoom .cw-form-control{width:76px;min-width:76px;min-height:44px;height:44px;padding:4px 24px 4px 10px}
+.schedule-workspace .week-nav{min-width:0;max-width:100%}
+.schedule-workspace .week-nav .date-range-button{flex:1}
+.schedule-workspace .view-options-slot{flex-shrink:0}
+.schedule-workspace .view-options{background:var(--cw-surface);border-color:var(--cw-line)}
+.schedule-mode-navigation{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;margin:0 0 6px;min-height:36px}
+.schedule-view-title{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.schedule-mode-rail{display:flex;align-items:center;gap:6px;min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin}
+.schedule-view-switch,.schedule-mode-rail>.grouping-switch{display:flex;flex:none;gap:2px;flex-wrap:nowrap;padding:2px;border:1px solid var(--cw-line);border-radius:7px;background:var(--cw-surface)}
+.schedule-mode-navigation .cw-button{white-space:nowrap}
+.schedule-primary-actions{display:flex;align-items:center;gap:5px;padding-right:196px;white-space:nowrap}
+.schedule-primary-actions .schedule-create-button{position:absolute;top:0;right:0;z-index:5;min-width:188px;min-height:74px;padding:14px 24px;font-size:1.35rem;font-weight:900}
+.schedule-navigation-grouping{flex:none}
+.schedule-mode-navigation .cw-button[aria-pressed="true"]{background:var(--cw-active);border-color:var(--cw-accent);color:var(--cw-active-text)}
+.schedule-filter-backdrop{position:fixed;inset:0;z-index:1050;display:flex;align-items:flex-start;justify-content:flex-end;padding:calc(var(--cw-header-height,64px) + 48px) 18px 18px;background:rgba(5,10,20,.24)}
+.schedule-filter-overlay{width:min(430px,calc(100vw - 32px));max-height:calc(100dvh - var(--cw-header-height,64px) - 64px);overflow:auto;padding:18px;border:1px solid var(--cw-line);border-radius:14px;background:var(--cw-surface);box-shadow:var(--cw-shadow)}
+.schedule-filter-overlay>header,.schedule-filter-overlay>footer{display:flex;align-items:center;justify-content:space-between;gap:12px}.schedule-filter-overlay h2{margin:0;font-size:1rem}.schedule-filter-overlay header p{margin:3px 0 0;color:var(--cw-muted);font-size:.72rem}.schedule-filter-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}.schedule-filter-fields .cw-form-field,.schedule-display-settings>.cw-form-field{display:grid;gap:5px;min-width:0}.schedule-filter-fields .cw-form-field>span,.schedule-display-settings>.cw-form-field>span{font-size:.72rem;font-weight:700}.schedule-filter-fields .cw-form-control,.schedule-display-settings .cw-form-control{width:100%}.schedule-filter-toggles{display:flex;gap:16px;margin:0 0 12px;padding:12px;border-radius:8px;background:var(--cw-raised)}.schedule-display-settings{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:end;gap:12px;margin-bottom:18px;padding:12px;border:1px solid var(--cw-line);border-radius:8px}.schedule-display-settings .cw-range-field{grid-column:1 / -1}.schedule-display-settings .cw-range-control{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px}.schedule-display-settings .view-toggle{min-height:38px}.schedule-filter-overlay>footer{justify-content:flex-end;padding-top:14px;border-top:1px solid var(--cw-line)}
+.month-navigation{display:flex;align-items:center;gap:6px;margin-bottom:6px}.month-navigation strong{min-width:112px;text-align:center;font-size:.85rem}
+.month-calendar{overflow:auto;border:1px solid var(--cw-line);border-radius:10px;background:var(--cw-surface)}
+.month-weekdays,.month-week{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));min-width:840px}
+.month-weekdays{position:sticky;top:0;z-index:4;background:var(--cw-raised);border-bottom:1px solid var(--cw-line)}
+.month-weekdays b{padding:9px;text-align:center;font-size:.8rem;color:var(--cw-muted)}
+.month-grid{min-width:840px}
+.month-week{position:relative;min-height:calc(var(--month-info-height) + var(--month-lanes) * var(--month-lane-height) + 8px);border-bottom:1px solid var(--cw-line)}
+.month-week-days{position:absolute;inset:0;display:grid;grid-template-columns:repeat(7,minmax(120px,1fr))}
+.month-week-days>article{min-width:0;padding:4px 6px;border-right:1px solid var(--cw-line);background:var(--cw-surface)}
+.month-week-days>article:last-child{border-right:0}.month-week-days>article.outside-month{background:color-mix(in srgb,var(--cw-muted) 4%,var(--cw-surface))}.month-week-days>article.today{box-shadow:inset 0 0 0 2px var(--cw-accent)}
+.month-week-days>article.calendar-sunday,.month-week-days>article.calendar-holiday{background:color-mix(in srgb,var(--cw-danger,#d05b63) 7%,var(--cw-surface))}
+.month-week-days>article.calendar-saturday{background:color-mix(in srgb,var(--cw-accent) 6%,var(--cw-surface))}
+.month-week-days article>header{display:flex;align-items:center;gap:5px;min-height:28px}.month-week-days article>header time{font-weight:750}.month-week-days article>header span{font-size:.65rem;color:var(--cw-danger,#d05b63);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.month-week-days article>header button{margin-left:auto}
+.month-milestones{display:grid;gap:2px}.month-milestone{min-width:0;height:38px;border-left:3px solid var(--cw-warning,#c48928);background:color-mix(in srgb,var(--cw-warning,#c48928) 9%,var(--cw-surface));overflow:hidden}.month-milestone-title{display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}html body button.cw-button.month-milestone{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:0;min-width:0;height:38px;padding:2px 4px;font-size:.68rem;line-height:15px;text-align:left}
+.month-task-lanes{position:absolute;z-index:2;top:var(--month-info-height);left:0;right:0;display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));grid-auto-rows:calc(var(--month-lane-height) - 4px);row-gap:4px;padding:0 3px;pointer-events:none}
+html body button.cw-button.month-task{pointer-events:auto;min-width:0;height:calc(var(--month-lane-height) - 4px);margin:0 3px;padding:4px 8px!important;align-content:center;justify-content:stretch;justify-items:stretch;gap:1px!important;overflow:hidden;border-left-width:4px;text-align:left}
+.month-task[data-continues-before="true"]{margin-left:0;border-top-left-radius:2px;border-bottom-left-radius:2px}.month-task[data-continues-after="true"]{margin-right:0;border-top-right-radius:2px;border-bottom-right-radius:2px}
+.month-task-heading,.month-task-meta{display:flex;align-items:center;min-width:0;gap:5px}.month-task-heading strong{min-width:0;flex:1;font-size:.75rem;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.month-task-heading>.cw-entity-avatar{width:18px;height:18px;flex:0 0 18px;font-size:.58rem}.month-task-status{flex:none;font-size:.58rem;font-weight:700;padding:1px 4px;border-radius:10px;background:var(--cw-surface);color:var(--cw-muted)}.month-task-status.progress{color:var(--cw-accent)}.month-task-status.done{color:var(--cw-success,#30856e)}
+.month-task-meta{font-size:.63rem;line-height:16px;color:var(--cw-muted);white-space:nowrap}.month-task-meta .avatar{width:16px;height:16px;flex:0 0 16px;font-size:.5rem}.month-task-meta b{color:var(--cw-text);font-weight:650}.month-task-meta>span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis}.month-task-description{min-width:0;font-size:.6rem;line-height:14px;color:var(--cw-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.range-board .timeline-task.period-task .task-card>*{position:sticky;left:12px;max-width:min(340px,calc(100vw - 220px));align-self:flex-start}
+.range-board.employee-view .timeline-task.period-task .task-card>*{left:172px}
+.timeline-task.with-task-details,.mobile-task.with-task-details{flex-wrap:wrap;align-content:flex-start}.my-task-details{pointer-events:none;display:flex;flex:0 0 calc(100% - 24px);width:calc(100% - 24px);flex-direction:column;gap:3px;margin:3px 0 3px 24px;padding:5px 7px;border-left:2px solid var(--cw-accent);background:color-mix(in srgb,var(--cw-accent) 7%,var(--cw-surface));font-size:.68rem;overflow:hidden}.my-task-details p{margin:0;white-space:pre-wrap}.my-task-details span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.my-task-details .completed{text-decoration:line-through;color:var(--cw-muted)}
+.schedule-workspace .kanban-person{flex-wrap:wrap}
+.schedule-workspace .kanban-person>.cw-form-field{position:relative;flex:1 0 100%;margin-top:8px;font-size:.875rem}
+@media(max-width:700px){
+  .schedule-mode-navigation,.schedule-mode-rail{display:contents}
+  .schedule-view-switch{position:sticky;top:var(--workspace-mobile-header-height);z-index:20;width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;flex-wrap:nowrap;background:var(--cw-canvas)}
+  .schedule-mode-rail>.grouping-switch{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;flex-wrap:nowrap}
+  .schedule-primary-actions{justify-content:flex-end;flex-wrap:wrap;margin-bottom:6px;padding-right:0}
+  .schedule-primary-actions .schedule-create-button{position:static;min-width:auto;min-height:44px;padding:8px 14px;font-size:.85rem}
+  .schedule-filter-backdrop{align-items:flex-end;padding:10px;background:rgba(5,10,20,.48)}.schedule-filter-overlay{width:100%;max-height:80dvh}.schedule-filter-fields{grid-template-columns:minmax(0,1fr)}
+  .schedule-workspace .toolbar{flex-wrap:wrap;overflow:visible;gap:6px}
+  .schedule-workspace .week-nav{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;width:100%;flex:1 1 100%;gap:4px}
+  .schedule-workspace .week-nav .date-range-button{min-width:0}
+  .schedule-workspace .week-nav .date-range-button strong{white-space:nowrap;font-size:.75rem}
+  .schedule-workspace .filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;overflow:visible}
+  .schedule-workspace .filters>.cw-form-field{min-width:0;width:100%;max-width:none}
+  .schedule-workspace .filters>.cw-button,.schedule-workspace .filters>.cw-check-control{justify-self:start;white-space:nowrap}
+  .schedule-workspace .toolbar>.grow{display:none}
+  .month-calendar{max-height:none}.month-weekdays,.month-grid,.month-week{min-width:700px}.month-weekdays,.month-week,.month-week-days,.month-task-lanes{grid-template-columns:repeat(7,100px)}
+  .month-task-status{display:none}.month-task{padding-inline:6px!important}.month-task-meta{gap:3px}
+}
+@media(max-width:420px){
+  .schedule-workspace .filters{grid-template-columns:minmax(0,1fr)}
+}
+
+.schedule-filter-toggles{flex-wrap:wrap}
+.open-schedule-color-settings{grid-column:1 / -1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:0;padding:10px;border:1px solid var(--cw-line);border-radius:8px}
+.open-schedule-color-settings legend{padding:0 5px;font-size:.72rem;font-weight:700}
+.open-schedule-color-card{display:grid;gap:6px;padding:8px;border-radius:6px;background:var(--cw-raised);font-size:.68rem}.open-schedule-color-card>strong{font-size:.72rem}.open-schedule-color-card label{display:grid;grid-template-columns:auto 28px minmax(0,1fr);align-items:center;gap:6px}.open-schedule-color-card label>span{color:var(--cw-muted);font-size:.6rem}
+html body .open-schedule-color-settings input.cw-form-control{width:28px;min-width:28px;height:28px;min-height:28px;padding:0;border:0;background:transparent;cursor:pointer}
+.open-schedule-color-settings code{overflow:hidden;color:var(--cw-muted);font-size:.56rem;text-overflow:ellipsis}

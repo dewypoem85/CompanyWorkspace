@@ -1,0 +1,5 @@
+.milestone-countdown{display:flex;flex-wrap:wrap;gap:2px 8px;font-size:.68rem;line-height:1.35;color:var(--cw-muted)}
+.milestone-countdown>span{white-space:nowrap}
+.milestone-schedule-list .milestone-countdown{margin-left:auto}
+.month-milestone .milestone-countdown{flex-wrap:nowrap;gap:4px;font-size:.59rem}
+.month-milestone .milestone-countdown>span{white-space:nowrap}

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "services": [
+    {"id":"home","app":"portal","title":"회사 홈","permission":"authenticated","adapter":"razor","navigation":"shared","namespace":"CompanyPortal.Workspace","defaultPolicy":"EmployeeOnly","policies":["EmployeeOnly","AdminOnly","MasterOnly"],"navigationEndpoint":"/api/workspace/navigation","systemPages":[{"entry":"apps/portal/Pages/Account/Login.cshtml","reason":"Google 인증 Challenge만 반환하는 기존 엔드포인트"},{"entry":"apps/portal/Pages/Account/Logout.cshtml","reason":"세션 종료 후 redirect하는 기존 엔드포인트"},{"entry":"apps/portal/Pages/Auth/Launch.cshtml","reason":"서명된 서비스 SSO 전달용 동적 경로이며 EmployeeOnly 정책 유지"}]},
+    {"id":"leave","app":"leave","title":"연차관리","permission":"leave.access","adapter":"razor","navigation":"shared","namespace":"LeaveManager.Workspace","defaultPolicy":"EmployeeOnly","policies":["EmployeeOnly","AdminOnly","MasterOnly"],"navigationEndpoint":"/api/workspace/navigation","systemPages":[{"entry":"apps/leave/Pages/Index.cshtml","reason":"로그인 안내 없이 보호된 연차 화면으로 이동하는 기존 루트 리디렉션"},{"entry":"apps/leave/Pages/Leave/Calendar.cshtml","reason":"기존 year/month 쿼리를 전달하는 달력 호환 리디렉션"},{"entry":"apps/leave/Pages/Leave/Apply.cshtml","reason":"기존 신청 링크의 내 연차 리디렉션"},{"entry":"apps/leave/Pages/Account/Login.cshtml","reason":"회사 SSO로 이동하는 기존 로그인 리디렉션"},{"entry":"apps/leave/Pages/Account/Logout.cshtml","reason":"기존 세션 종료 리디렉션"},{"entry":"apps/leave/Pages/Sso/Callback.cshtml","reason":"HMAC 인증 및 세션 발급 전용 콜백"},{"entry":"apps/leave/Pages/Sso/Provision.cshtml","reason":"HMAC 프로비저닝 전용 POST"},{"entry":"apps/leave/Pages/Auth/DiscordCallback.cshtml","reason":"EmployeeOnly 정책의 Discord OAuth 콜백 및 설정 페이지 리디렉션"}]},
+    {"id":"schedule","app":"schedule","title":"팀 일정","permission":"schedule.access","adapter":"react","navigation":"shared","client":"src","document":"index.html","serverAdapter":"aspnet","capabilities":["schedule.manage"]},
+    {"id":"cs","app":"cs","title":"CS","permission":"cs.access","adapter":"static","navigation":"shared"},
+    {"id":"statistics","app":"statistics","title":"게임 통계","permission":"statistics.access","adapter":"static-spa","navigation":"shared"},
+    {"id":"sheet","app":"sheet","title":"시트 관리","permission":"sheet.access","adapter":"react","navigation":"shared","client":"src/client"},
+    {"id":"iap","app":"iap","title":"상품 관리","permission":"iap.access","adapter":"react","navigation":"shared","client":"src/client","document":"index.html"}
+  ]
+}

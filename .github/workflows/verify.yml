@@ -1,0 +1,174 @@
+name: Workspace Verification
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  shared-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=low --include=dev --include=optional --registry=https://registry.npmjs.org
+      - run: npm run check
+  node-apps:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [cs, statistics]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=low --include=dev --include=optional --registry=https://registry.npmjs.org
+      - run: npm run check
+      - run: npm test
+  dotnet-apps:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [portal, leave]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet build --configuration Release
+  frontend-apps:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [schedule, sheet, iap]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=low --include=dev --include=optional --registry=https://registry.npmjs.org
+      - run: npm test
+      - run: npm run build
+      - run: npm run typecheck
+        if: matrix.app == 'sheet'
+      - run: npm run test:runtime
+        if: matrix.app == 'sheet'
+  required:
+    if: always()
+    needs: [shared-ui, node-apps, dotnet-apps, frontend-apps, integration, images, browser, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Fail closed when any verification fails or is skipped
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: node tooling/verification-gate.mjs
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: image-verification-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/image-input
+          merge-multiple: true
+      - run: node tooling/image-verification-set.mjs
+      - uses: actions/upload-artifact@v7
+        with:
+          name: workspace-verification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/verification/*.json
+          if-no-files-found: error
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --prefix apps/schedule
+      - run: npm run build --prefix apps/schedule
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test apps/schedule/tests/Schedule.Tests.csproj -c Release
+      - run: dotnet test apps/schedule/integration-tests/CompanyIntegration.Tests.csproj -c Release
+      - run: python3 apps/schedule/scripts/test-import-release-sheet.py
+  images:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [portal, leave, schedule, cs, statistics, sheet, iap]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - run: docker build -t workspace-${{ matrix.app }}:verify apps/${{ matrix.app }}
+      - run: node tooling/container-smoke.mjs --service ${{ matrix.app }} --image workspace-${{ matrix.app }}:verify
+      - run: node tooling/image-verification-record.mjs --service ${{ matrix.app }} --image workspace-${{ matrix.app }}:verify
+      - uses: actions/upload-artifact@v7
+        with:
+          name: image-verification-${{ matrix.app }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/images/${{ matrix.app }}.json
+          if-no-files-found: error
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: npm ci --ignore-scripts --prefix apps/sheet
+      - run: npm ci --ignore-scripts --prefix apps/schedule
+      - run: npm ci --ignore-scripts --prefix apps/iap
+      - run: npm run test:browser
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: browser-verification
+          path: artifacts/browser
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile-android
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: '8.9'
+      - run: bash gradlew :app:testDebugUnitTest :app:assembleDebug
+      - uses: actions/upload-artifact@v7
+        with:
+          name: company-workspace-debug-apk
+          path: apps/mobile-android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

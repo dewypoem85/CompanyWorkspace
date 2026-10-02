@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "workflow": ".github/workflows/publish-images.yml",
+  "verificationWorkflow": ".github/workflows/verify.yml",
+  "verificationWorkflowName": "Workspace Verification",
+  "repository": "company-org/company-workspace",
+  "branch": "main",
+  "registry": "ghcr.io",
+  "namespace": "company-org",
+  "imagePrefix": "company-workspace-",
+  "services": ["portal", "leave", "schedule", "cs", "statistics", "sheet", "iap"],
+  "actions": {
+    "checkout": "actions/checkout@v7",
+    "setupNode": "actions/setup-node@v7",
+    "downloadArtifact": "actions/download-artifact@v8",
+    "uploadArtifact": "actions/upload-artifact@v7",
+    "login": "docker/login-action@v4"
+  }
+}

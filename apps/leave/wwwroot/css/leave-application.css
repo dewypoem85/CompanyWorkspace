@@ -1,0 +1,67 @@
+/* Only workflow geometry lives here. Shared primitives own controls and states. */
+html body dialog.cw-modal.day-detail-modal { width: min(920px, calc(100vw - 24px)); padding: 0; }
+.day-detail-head { position: sticky; top: 0; z-index: 1; flex-wrap: wrap; background: var(--cw-surface); border-color: var(--cw-line); }
+.day-detail-head h2 { flex: 1 1 160px; }
+.day-detail-body { overflow-wrap: anywhere; }
+.day-detail-body .leave-detail-person { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.day-detail-body .leave-detail-person > .cw-entity-avatar { margin: 0; }
+.day-detail-body .leave-detail-person-name { min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.day-detail-body .detail-work-plan { color: var(--cw-text); background: var(--cw-raised); border-color: var(--cw-line); }
+.day-detail-body .detail-work-plan b { color: var(--cw-muted); }
+.month-calendar .event-chip > span { color: inherit !important; }
+.event-chip.birthday, .birthday-detail, .year-event.birthday { background: var(--cw-violet-bg); color: var(--cw-violet); border-color: var(--cw-violet-line); }
+.year-legend-mark.birthday { background: var(--cw-violet); border-color: var(--cw-violet-line); }
+.birthday-icon { margin-right: 3px; }
+.birthday-detail-icon { display: inline-block; margin-bottom: 6px; font-size: 18px; line-height: 1; }
+.event-chip.milestone, .milestone-detail, .year-event.milestone { background: var(--cw-info-bg); color: var(--cw-info); border-color: var(--cw-info-line); }
+.year-legend-mark.milestone { background: var(--cw-info); border-color: var(--cw-info-line); }
+.milestone-icon { margin-right: 3px; }
+.milestone-detail-icon { display: inline-block; margin-bottom: 6px; font-size: 18px; line-height: 1; }
+.milestone-detail-meta, .milestone-project-identity { display: inline-flex; align-items: center; min-width: 0; gap: 3px; }
+.milestone-project-identity > span:last-child, .year-event-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.milestone-project-identity > .cw-entity-avatar { margin: 0; flex: 0 0 auto; }
+.day-detail-body .milestone-project-identity > .cw-entity-avatar { width: 20px; height: 20px; font-size: 10px; }
+.calendar-source-status { padding: 12px 22px 0; }
+.year-day-link:hover { background: var(--cw-hover); }
+.year-holiday-name { color: var(--cw-sunday); }
+/* Compact calendar cells keep their profile visible; metadata-only spans may collapse. */
+.month-calendar .event-chip .cw-entity-avatar { width: 16px; height: 16px; font-size: 9px; margin-right: 3px; }
+.year-mini-calendar .year-event .cw-entity-avatar { width: 14px; height: 14px; font-size: 8px; margin-right: 2px; }
+@media (max-width: 900px) { html body dialog.cw-modal.day-detail-modal { width: min(620px, calc(100vw - 24px)); } }
+[data-leave-external-screen] { scroll-margin-top: calc(var(--cw-header-height) + 1rem); }
+[data-leave-admin-screen] { scroll-margin-top: calc(var(--cw-header-height) + 1rem); }
+[data-leave-admin-recheck] a { color: var(--cw-accent); }
+[data-leave-admin-draft]:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; color: var(--cw-muted); }
+#adminForceAddForm { color: var(--cw-text); background: var(--cw-surface); border-color: var(--cw-line); }
+#adminForceAddForm .force-form-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; }
+[data-leave-external-recheck] a { color: var(--cw-accent); }
+#externalScheduleForm { color: var(--cw-text); background: var(--cw-surface); border-color: var(--cw-line); }
+#externalScheduleForm .external-form-head { flex-wrap: wrap; align-items: flex-start; gap: 12px; }
+#externalScheduleForm .external-form-head > div { flex: 1 1 220px; min-width: 0; }
+#externalScheduleEditCancel { flex: 0 0 auto; }
+:is(.external-schedule-recovery, .admin-force-recovery) { min-width: 0; color: var(--cw-text); }
+:is(.external-schedule-recovery, .admin-force-recovery) a { color: var(--cw-accent); }
+:is(.external-schedule-recovery, .admin-force-recovery) pre { padding: 1rem; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--cw-text); background: var(--cw-raised); border: 1px solid var(--cw-line); }
+[data-leave-self-screen] { scroll-margin-top: calc(var(--cw-header-height) + 1rem); }
+[data-leave-self-recheck] a { color: var(--cw-accent); }
+#applyPanel { scroll-margin-top: calc(var(--cw-header-height) + 1rem); }
+#applyPanel .cw-form-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 0; align-items: start; }
+#applyPanel .cw-form-field:has(textarea), #applyPanel .apply-actions { grid-column: 1 / -1; }
+#applyPanel textarea.cw-form-control { min-height: 110px; }
+#applyPanel textarea[name="Input.WorkPlan"] { min-height: 136px; }
+html body :is(#adminForceAddForm, #externalScheduleForm) .cw-form-fields { padding: 0; align-items: start; }
+html body #externalScheduleMemo.cw-form-control { min-height: 100px; }
+html body #calendarMoveForm .cw-form-control { width: auto; }
+html body #leaveRequestListForm .cw-form-control { width: auto; }
+html body #leaveRequestPageJumpForm .cw-form-control { width: 88px; text-align: center; }
+.detail-item-actions .cw-button { margin-top: 0; }
+#applyPanel [data-application-state] { margin-top: 1rem; }
+.birthday-leave-summary { margin: 1rem 0 .5rem; }
+.birthday-leave-summary-action { margin: 0 0 1rem; }
+.birthday-leave-form-status { grid-column: 1 / -1; }
+#applyPanel [data-application-recheck] { color: var(--cw-accent); overflow-wrap: anywhere; }
+#applyPanel .application-raw-draft { padding: 1rem; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--cw-text); background: var(--cw-raised); border: 1px solid var(--cw-line); }
+@media (max-width: 620px) {
+  #applyPanel .cw-form-fields { grid-template-columns: minmax(0, 1fr); }
+  html body :is(#calendarMoveForm, #leaveRequestListForm, #leaveRequestPageJumpForm) .cw-form-control { width: 100%; }
+}

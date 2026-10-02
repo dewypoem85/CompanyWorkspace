@@ -1,0 +1,65 @@
+{
+  "version": "a1b88b90a3ac4e17",
+  "files": [
+    {
+      "path": "apps/portal/wwwroot/js/company-workspace.js",
+      "sha256": "a97eaf0c72e772d15d58ba8de0f482b3e2b045ab58b48329c63e7ec5823078fe"
+    },
+    {
+      "path": "apps/portal/wwwroot/css/company-workspace.css",
+      "sha256": "1500c805a18fa4c85f4fbfcc14ddf5d2f4b6d12450990358e45b559a9da51dbc"
+    },
+    {
+      "path": "apps/portal/wwwroot/js/company-entities.js",
+      "sha256": "8c24988c6dc0e25bb1a2b284cc01206fa287d6804464e1d419883afd19bf130e"
+    },
+    {
+      "path": "apps/portal/wwwroot/images/company-logo.png",
+      "sha256": "1a01642db92935478cd3e66015bc32d0e52fc223646098a5bcd3d1b98d1119f8"
+    },
+    {
+      "path": "apps/portal/wwwroot/.well-known/assetlinks.json",
+      "sha256": "e840d0240cd0beb6f7ca94c31072b7068bf3f8352afbf555eec142c722dc9d00"
+    },
+    {
+      "path": "apps/leave/wwwroot/.well-known/assetlinks.json",
+      "sha256": "e840d0240cd0beb6f7ca94c31072b7068bf3f8352afbf555eec142c722dc9d00"
+    },
+    {
+      "path": "apps/schedule/public/.well-known/assetlinks.json",
+      "sha256": "e840d0240cd0beb6f7ca94c31072b7068bf3f8352afbf555eec142c722dc9d00"
+    },
+    {
+      "path": "apps/cs/public/.well-known/assetlinks.json",
+      "sha256": "e840d0240cd0beb6f7ca94c31072b7068bf3f8352afbf555eec142c722dc9d00"
+    },
+    {
+      "path": "apps/statistics/public/.well-known/assetlinks.json",
+      "sha256": "e840d0240cd0beb6f7ca94c31072b7068bf3f8352afbf555eec142c722dc9d00"
+    },
+    {
+      "path": "apps/sheet/src/client/public/.well-known/assetlinks.json",
+      "sha256": "e840d0240cd0beb6f7ca94c31072b7068bf3f8352afbf555eec142c722dc9d00"
+    },
+    {
+      "path": "apps/iap/public/.well-known/assetlinks.json",
+      "sha256": "e840d0240cd0beb6f7ca94c31072b7068bf3f8352afbf555eec142c722dc9d00"
+    },
+    {
+      "path": "apps/portal/wwwroot/manifest.webmanifest",
+      "sha256": "e97dd7185f83d0d2d29eb51cd220f024c18d944b2f7ea98da0dd5bf3d702f0b4"
+    },
+    {
+      "path": "apps/mobile-android/app/src/main/res/values/mobile_contract.xml",
+      "sha256": "8d4421af704ce84dc93c3073fa06edbac4b1f1e88f51191c325ea52b2bc56db0"
+    },
+    {
+      "path": "apps/mobile-android/app/src/main/res/drawable/company_logo.png",
+      "sha256": "1a01642db92935478cd3e66015bc32d0e52fc223646098a5bcd3d1b98d1119f8"
+    },
+    {
+      "path": "apps/portal/Workspace/AccountFields.g.cs",
+      "sha256": "f1610485358642efe7eca286d414420ee3f7a4556a32afbb7c4779032715ca71"
+    }
+  ]
+}

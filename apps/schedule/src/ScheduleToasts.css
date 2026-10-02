@@ -1,0 +1,5 @@
+.schedule-toast-stack{position:fixed;z-index:1200;top:calc(var(--cw-header-height,64px) + 12px);right:16px;display:grid;gap:8px;width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - var(--cw-header-height,64px) - 24px);overflow-y:auto;pointer-events:none}
+.schedule-toast{position:relative;pointer-events:auto;filter:drop-shadow(0 8px 20px rgb(0 0 0 / .18))}
+.schedule-toast .cw-feedback{padding-right:48px}
+html body .schedule-toast-close.cw-button{position:absolute;top:10px;right:10px;width:30px;min-height:30px;padding:0}
+@media(max-width:700px){.schedule-toast-stack{top:calc(var(--workspace-mobile-header-height,56px) + 8px);right:8px;width:calc(100vw - 16px);max-height:calc(100dvh - var(--workspace-mobile-header-height,56px) - 16px)}}

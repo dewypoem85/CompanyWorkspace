@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "sealed": true,
+  "entries": [
+    {"path":"apps/cs/public/app.js","count":1,"owner":"Steam 거래 checked transport","contract":"packages/contracts/cs-steam-refund-reads.md"},
+    {"path":"apps/cs/public/player-data.js","count":1,"owner":"PlayFab 플레이어 데이터 checked transport","contract":"packages/contracts/cs-player-data-reads.md"},
+    {"path":"apps/cs/public/playfab-logs.js","count":1,"owner":"PlayFab 로그 checked transport","contract":"packages/contracts/cs-log-search-reads.md"},
+    {"path":"apps/cs/public/product-commands.js","count":1,"owner":"PlayFab 상품 명령 checked transport","contract":"packages/contracts/cs-product-command-reads.md"},
+    {"path":"apps/leave/wwwroot/js/approval-forms.js","count":1,"owner":"연차 승인 대기열 checked transport","contract":"packages/contracts/leave-approvals.md"},
+    {"path":"apps/leave/wwwroot/js/audit-logs.js","count":1,"owner":"연차 감사 HTML transport","contract":"packages/contracts/leave-audit.md"},
+    {"path":"apps/leave/wwwroot/js/leave-dashboard-read.js","count":1,"owner":"연차 대시보드 부분 HTML checked transport","contract":"packages/contracts/leave-dashboard-reads.md"},
+    {"path":"apps/leave/wwwroot/js/leave-grants.js","count":1,"owner":"연차 발생분 기준 조회 transport","contract":"packages/contracts/leave-grants.md"},
+    {"path":"apps/portal/wwwroot/js/account-review.js","count":1,"owner":"직원 충돌 비교 snapshot transport","contract":"packages/contracts/portal-account-reads.md"},
+    {"path":"apps/schedule/src/scheduleReads.ts","count":1,"owner":"팀 일정 checked JSON read transport","contract":"packages/contracts/schedule-reads.md"},
+    {"path":"apps/sheet/src/client/api.ts","count":1,"owner":"시트 checked JSON read transport","contract":"packages/contracts/sheet-reads.md"},
+    {"path":"apps/statistics/public/app.js","count":1,"owner":"통계 checked JSON read transport","contract":"packages/contracts/statistics-reads.md"},
+    {"path":"apps/statistics/public/refresh.js","count":1,"owner":"통계 갱신 checked transport injection","contract":"packages/contracts/statistics-refresh.md"},
+    {"path":"packages/workspace-ui/src/company-workspace.js","count":1,"owner":"회사 context API transport","contract":"packages/contracts/workspace-context-reads.md"},
+    {"path":"packages/workspace-ui/src/forms.js","count":1,"owner":"공통 form write transport","contract":"packages/contracts/json-form-transport.md"},
+    {"path":"packages/workspace-ui/src/navigation.js","count":1,"owner":"공통 서비스 권한 navigation transport","contract":"packages/contracts/navigation-reads.md"},
+    {"path":"packages/workspace-ui/src/page-router.js","count":1,"owner":"같은 서비스 문서 본문 checked GET transport","contract":"packages/contracts/page-navigation.md"}
+  ]
+}

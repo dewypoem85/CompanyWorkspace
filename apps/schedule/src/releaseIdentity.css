@@ -1,0 +1,14 @@
+.release-project-identity,
+.release-actor {
+  display: inline-flex;
+  align-items: center;
+  gap: .5em;
+  min-width: 0;
+  max-width: 100%;
+  vertical-align: middle;
+}
+.release-project-identity > span:last-child,
+.release-actor > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

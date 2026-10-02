@@ -1,0 +1,10 @@
+@page
+@model LeaveManager.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "로그인";
+}
+<h1>로그인</h1>
+<p>회사 홈에서 관리되는 회사 계정으로 로그인합니다.</p>
+<form method="get" asp-page="/Account/Login" class="login-options-form">
+    <button class="cw-button" data-variant="primary" type="submit">회사 계정으로 로그인</button>
+</form>

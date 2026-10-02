@@ -1,0 +1,74 @@
+@page
+@model LeaveManager.Pages.Admin.EmployeesModel
+
+<h1>회사 직원 연결 현황</h1>
+<p>
+    직원 계정, 재직 상태, 회사 역할과 시스템 접근 권한은 회사 홈에서만 관리합니다.
+    이 화면은 연차 DB가 어떤 회사 계정과 연결되어 있는지 확인하는 읽기 전용 화면입니다.
+</p>
+
+@if (Model.PortalUsersUrl != "#")
+{
+    <p><a class="button" href="@Model.PortalUsersUrl">회사 홈에서 직원·접근권한 관리</a></p>
+}
+
+<section class="panel">
+    <h2>연차 프로필 연결 상태</h2>
+    <p class="muted-text">
+        이름·이메일·부서·역할·활성 상태는 회사 홈의 변경 이벤트와 다음 SSO 진입 시 갱신됩니다. 기존 연차 기록을 보호하기 위해
+        연차 DB의 직원 ID와 이미 생성된 지급·신청 기록은 그대로 유지됩니다.
+    </p>
+    <div class="cw-table-scroll" tabindex="0" role="region" aria-label="목록 표">
+        <table class="cw-data-table employee-table" data-layout="cards" role="table">
+            <thead>
+                <tr>
+                    <th scope="col">연결</th>
+                    <th scope="col">이름</th>
+                    <th scope="col">이메일</th>
+                    <th scope="col">부서</th>
+                    <th scope="col">입사일</th>
+                    <th scope="col">Leave 역할</th>
+                    <th scope="col">로컬 상태</th>
+                    <th scope="col">연차 보기</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var employee in Model.Employees)
+            {
+                <tr class="@(employee.IsActive ? "" : "retired-row")">
+                    <td data-label="연결"><div class="cw-table-value">
+                        @if (employee.CompanyUserId.HasValue)
+                        {
+                            <span>연결됨 (#@employee.CompanyUserId)</span>
+                        }
+                        else
+                        {
+                            <strong>미연결</strong>
+                        }
+                    </div></td>
+                    <td data-label="이름"><div class="cw-table-value"><span class="cw-entity-avatar" aria-hidden="true" data-company-local-employee="@employee.Id">@System.Globalization.StringInfo.GetNextTextElement(employee.Name)</span>@employee.Name</div></td>
+                    <td data-label="이메일"><div class="cw-table-value">@employee.Email</div></td>
+                    <td data-label="부서"><div class="cw-table-value">@(string.IsNullOrWhiteSpace(employee.Department) ? "-" : employee.Department)</div></td>
+                    <td data-label="입사일"><div class="cw-table-value">@employee.HireDate.ToString("yyyy-MM-dd")</div></td>
+                    <td data-label="Leave 역할"><div class="cw-table-value">@LeaveManager.Pages.Admin.EmployeesModel.RoleLabel(employee.Role)</div></td>
+                    <td data-label="로컬 상태"><div class="cw-table-value">@(employee.IsActive ? "활성" : "비활성")</div></td>
+                    <td data-label="연차 보기"><div class="cw-table-value"><a class="btn btn-secondary small" asp-page="/Leave/Index" asp-route-ViewEmployeeId="@employee.Id">대신보기</a></div></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    @if (Model.Employees.Count == 0)
+    {
+        <p class="muted-text">연결된 연차 프로필이 없습니다.</p>
+    }
+</section>
+
+<section class="panel warning-panel">
+    <h2>입사일 변경 주의</h2>
+    <p>
+        입사일은 월차·연차 발생일과 만료일 계산에 직접 사용됩니다. 지급·신청·정산 이력이 있는 프로필은 회사 홈에서
+        입사일을 수정해도 자동 덮어쓰거나 재계산하지 않습니다. 정정이 필요하면 기존 지급·사용
+        내역을 백업하고 영향 범위를 검토한 뒤 연차 도메인 보정 절차로 처리해야 합니다.
+    </p>
+</section>

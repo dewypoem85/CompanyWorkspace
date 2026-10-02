@@ -1,0 +1,14 @@
+/* Approval layout only. Shared semantic colors remain owned by the workspace theme. */
+html body [data-approval-screen] [data-approval-form] { display:flex; flex-wrap:wrap; gap:8px; min-width:0; }
+html body [data-approval-screen] [data-approval-form] input[name="reason"] { flex:1 1 100%; width:100%; min-width:0; }
+html body [data-approval-screen] [data-approval-form] button { flex:1 1 auto; }
+html body [data-approval-state] { scroll-margin-top:calc(var(--cw-header-height) + 16px); }
+html body [data-approval-screen] .compact-filter-form label { display:grid; grid-template-columns:max-content minmax(0,1fr); white-space:nowrap; }
+html body [data-approval-screen] .cw-data-table th { white-space:nowrap; }
+html body [data-approval-screen] > p { overflow-wrap:anywhere; }
+@media (min-width:901px) {
+  html body [data-approval-screen] .cw-data-table { min-width:1100px; }
+  html body [data-approval-screen] .cw-data-table td:nth-child(2),
+  html body [data-approval-screen] .cw-data-table td:nth-child(3) { white-space:nowrap; }
+  html body [data-approval-screen] [data-approval-form] { min-width:150px; }
+}

@@ -1,0 +1,27 @@
+{
+  "dungeon-slasher": {
+    "google": {
+      "packageName": "com.example.testgame",
+      "keyFile": "/run/secrets/google-publisher.json",
+      "createMethod": "inappproducts.insert",
+      "defaultLanguage": "ko-KR",
+      "legacySaleCountries": [],
+      "writesEnabled": false
+    },
+    "apple": {
+      "appId": "1234567890",
+      "issuerId": "replace-on-server",
+      "keyId": "replace-on-server",
+      "keyFile": "/run/secrets/apple-auth.p8",
+      "reviewImages": { "review.png": "/run/secrets/review.png" },
+      "writesEnabled": false
+    },
+    "steam": {
+      "titleId": "EXAMPLE",
+      "secretKeyFile": "/run/secrets/playfab-secret.txt",
+      "maxCatalogBytes": 9000,
+      "writesEnabled": false
+    },
+    "sheets": { "keyFile": "/run/secrets/sheets-reader.json", "writesEnabled": false }
+  }
+}

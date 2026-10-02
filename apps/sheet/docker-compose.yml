@@ -1,0 +1,42 @@
+services:
+  sheet-control:
+    build: .
+    container_name: sheet-control
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4173:4173"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      PORT: 4173
+      NODE_ENV: production
+      TEST_SPREADSHEET_ID: ${TEST_SPREADSHEET_ID:-10ryam8K5qbNZ7EFjW1YjvOEzGbEf9uh5dR36daNQuog}
+      GOOGLE_SERVICE_ACCOUNT_JSON: ${GOOGLE_SERVICE_ACCOUNT_JSON:-}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google-service-account.json
+      ALLOW_SHEET_WRITES: ${ALLOW_SHEET_WRITES:-false}
+      COMPANY_SSO_REQUIRED: ${COMPANY_SSO_REQUIRED:-true}
+      COMPANY_PORTAL_URL: ${COMPANY_PORTAL_URL:-https://company.example.com}
+      COMPANY_SSO_ISSUER: ${COMPANY_SSO_ISSUER:-company-portal}
+      COMPANY_SSO_SHARED_SECRET: ${COMPANY_SSO_SHARED_SECRET}
+      SHEET_SESSION_MINUTES: ${SHEET_SESSION_MINUTES:-10080}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      TRUST_PROXY: ${TRUST_PROXY:-true}
+    volumes:
+      - ./data:/app/data
+      - ${GOOGLE_SERVICE_ACCOUNT_FILE:-../private/sheet-google-service-account.json}:/run/secrets/google-service-account.json:ro
+    networks:
+      - default
+      - company-services
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4173/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  company-services:
+    external: true
+    name: company-services

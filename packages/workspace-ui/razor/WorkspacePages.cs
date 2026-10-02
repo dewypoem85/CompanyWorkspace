@@ -1,0 +1,73 @@
+#nullable enable
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace __WORKSPACE_NAMESPACE__;
+
+public sealed record WorkspacePage(string Id, string RazorPage, string Path, string[] Aliases, string Title,
+    string? Policy, bool Anonymous, bool Navigation, Dictionary<string, string> Query);
+public sealed record WorkspaceNavigation(string[] Pages, Dictionary<string, int>? Badges = null);
+public interface IWorkspaceNavigationBadges
+{
+    Task<Dictionary<string, int>> GetAsync(HttpContext context, IReadOnlyCollection<string> allowedPages);
+}
+
+public static partial class WorkspacePages
+{
+    public static WorkspacePage? Resolve(string? razorPage, IQueryCollection query) =>
+        All.Where(p => p.RazorPage.Equals(razorPage, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(p => p.Query.Count)
+            .FirstOrDefault(p => p.Query.All(pair => query[pair.Key].FirstOrDefault() == pair.Value));
+
+    public static void Configure(RazorPagesOptions options)
+    {
+        foreach (var group in All.GroupBy(p => p.RazorPage))
+        {
+            var page = group.First();
+            if (page.Anonymous) options.Conventions.AllowAnonymousToPage(page.RazorPage);
+            else options.Conventions.AuthorizePage(page.RazorPage, page.Policy!);
+            var paths = group.SelectMany(p => new[] { p.Path }.Concat(p.Aliases)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            options.Conventions.AddPageRouteModelConvention(page.RazorPage, model =>
+            {
+                // Keep Razor endpoint metadata while replacing only its route templates.
+                var prototype = model.Selectors.First();
+                model.Selectors.Clear();
+                foreach (var path in paths)
+                {
+                    var selector = new SelectorModel(prototype)
+                    {
+                        AttributeRouteModel = new AttributeRouteModel(new RouteAttribute(path.TrimStart('/')))
+                    };
+                    model.Selectors.Add(selector);
+                }
+            });
+        }
+    }
+
+    public static async Task<Results<Ok<WorkspaceNavigation>, UnauthorizedHttpResult>> Navigation(HttpContext context, IAuthorizationService authorization)
+    {
+        context.Response.Headers.CacheControl = "no-store";
+        if (context.User.Identity?.IsAuthenticated != true) return TypedResults.Unauthorized();
+        var policies = new Dictionary<string, bool>();
+        var pages = new List<string>();
+        foreach (var page in All.Where(p => p.Navigation))
+        {
+            if (page.Anonymous) { pages.Add(page.Id); continue; }
+            var policy = page.Policy!;
+            if (!policies.TryGetValue(policy, out var allowed))
+            {
+                allowed = (await authorization.AuthorizeAsync(context.User, null, policy)).Succeeded;
+                policies.Add(policy, allowed);
+            }
+            if (allowed) pages.Add(page.Id);
+        }
+        var provider = context.RequestServices.GetService<IWorkspaceNavigationBadges>();
+        var badges = provider is null ? null : await provider.GetAsync(context, pages);
+        return TypedResults.Ok(new WorkspaceNavigation(pages.ToArray(), badges));
+    }
+}

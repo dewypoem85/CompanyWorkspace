@@ -1,0 +1,84 @@
+@page
+@model LeaveManager.Pages.Notifications.IndexModel
+
+<div id="notificationCenter" data-notification-owner="@Model.EmployeeId">
+<div id="notificationState" hidden></div>
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div data-workspace-state="error" data-state-title="알림 확인 필요" data-state-message="@Model.ErrorMessage"></div>
+}
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div data-workspace-state="success" data-state-title="알림 처리 결과" data-state-message="@Model.StatusMessage"></div>
+}
+<p id="notificationRecheck" hidden><a asp-page="Index" class="btn btn-secondary">현재 계정의 목록 다시 확인</a></p>
+<fieldset id="notificationFields" class="notification-fields">
+
+<section class="page-title-row">
+    <div>
+        <p class="eyebrow">Notification center</p>
+        <h1>알림</h1>
+        <p class="muted-text">연차 신청, 승인, 반려, 취소 요청 알림을 확인합니다.</p>
+    </div>
+    <div class="title-action-row">
+        <a asp-page="/Settings/Discord" class="btn btn-secondary">Discord DM 설정</a>
+        @if (Model.UnreadCount > 0)
+        {
+            <form method="post" asp-antiforgery="true" asp-page-handler="MarkAllRead" data-notification-action="MarkAllRead">
+                <input type="hidden" name="expectedEmployeeId" value="@Model.EmployeeId" />
+                <button type="submit" class="cw-button">모두 읽음 처리</button>
+            </form>
+        }
+    </div>
+</section>
+
+<section class="panel notification-list-panel" data-notification-items>
+    @if (Model.Items.Count == 0)
+    {
+        <div data-workspace-state="empty" data-state-title="표시할 알림이 없습니다." data-state-message="연차 신청과 승인 등의 알림이 이곳에 표시됩니다."></div>
+    }
+    else
+    {
+        <div class="notification-list">
+        @foreach (var item in Model.Items)
+        {
+            <article class="notification-item @(item.IsRead ? "is-read" : "is-unread")" data-notification-id="@item.Id">
+                <div class="notification-dot" aria-hidden="true"></div>
+                <div class="notification-main">
+                    <div class="notification-title-row">
+                        <span class="notification-type">@Model.TypeLabel(item.Type)</span>
+                        <span class="cw-state-pill" data-tone="@(item.IsRead ? "neutral" : "warning")" data-read-status>@(item.IsRead ? "읽음" : "읽지 않음")</span>
+                        <strong>@item.Title</strong>
+                    </div>
+                    <p>@item.Message</p>
+                    <small>@Model.Kst(item.CreatedAtUtc)</small>
+                </div>
+                <div class="notification-actions">
+                    @if (!string.IsNullOrWhiteSpace(item.Link))
+                    {
+                        <form method="post" asp-antiforgery="true" asp-page-handler="Open" data-notification-action="Open">
+                            <input type="hidden" name="expectedEmployeeId" value="@Model.EmployeeId" />
+                            <input type="hidden" name="id" value="@item.Id" />
+                            <button type="submit" class="cw-button" data-variant="primary" data-size="compact">확인</button>
+                        </form>
+                    }
+                    @if (!item.IsRead)
+                    {
+                        <form method="post" asp-antiforgery="true" asp-page-handler="MarkRead" data-notification-action="MarkRead">
+                            <input type="hidden" name="expectedEmployeeId" value="@Model.EmployeeId" />
+                            <input type="hidden" name="id" value="@item.Id" />
+                            <button type="submit" class="cw-button" data-size="compact">읽음</button>
+                        </form>
+                    }
+                </div>
+            </article>
+        }
+        </div>
+    }
+</section>
+</fieldset>
+</div>
+
+@section Scripts {
+    <script type="module" src="~/js/notification-center.js" asp-append-version="true"></script>
+}

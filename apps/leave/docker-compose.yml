@@ -1,0 +1,50 @@
+services:
+  leave-manager:
+    build: .
+    container_name: leave-manager
+    restart: unless-stopped
+    ports: ["127.0.0.1:5080:8080"]
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - leave-data:/app/data
+      - leave-data-keys:/app/data-keys
+    networks:
+      - leave-net
+      - company-services
+    environment:
+      ConnectionStrings__Default: Data Source=/app/data/leave-manager.db
+      DataProtection__KeyPath: /app/data-keys
+      Discord__ClientId: ${DISCORD_CLIENT_ID}
+      Discord__ClientSecret: ${DISCORD_CLIENT_SECRET}
+      Discord__BotToken: ${DISCORD_BOT_TOKEN}
+      Discord__OAuthRedirectUri: ${DISCORD_OAUTH_REDIRECT_URI}
+      App__PublicBaseUrl: ${PUBLIC_BASE_URL:-https://leave.example.com}
+      CompanyPortal__BaseUrl: ${COMPANY_PORTAL_URL:-https://company.example.com}
+      CompanyPortal__SsoIssuer: ${COMPANY_SSO_ISSUER:-company-portal}
+      CompanyPortal__SsoSharedSecret: ${COMPANY_SSO_SHARED_SECRET}
+      Schedule__InternalUrl: http://company-schedule:8080
+      Authentication__SessionHours: ${AUTH_SESSION_HOURS:-168}
+      AllowedHosts: "${ALLOWED_HOSTS:-leave.example.com;localhost;127.0.0.1;[::1]}"
+      Security__ForceDeleteRequiresMaster: ${SECURITY_FORCE_DELETE_REQUIRES_MASTER:-true}
+      Security__RequireReasonsForSensitiveAdminActions: ${SECURITY_REQUIRE_REASONS:-true}
+      Security__TrustForwardedHeadersFromAnyProxy: ${SECURITY_TRUST_ANY_FORWARDER:-true}
+      Backup__Enabled: ${BACKUP_ENABLED:-true}
+      Backup__IntervalHours: ${BACKUP_INTERVAL_HOURS:-24}
+      Backup__RetentionDays: ${BACKUP_RETENTION_DAYS:-14}
+      Backup__Path: /app/data/backups
+
+volumes:
+  leave-data:
+    name: leave-manager-data
+  leave-data-keys:
+    name: leave-manager-data-keys
+
+networks:
+  leave-net:
+    name: leave-net
+  company-services:
+    external: true
+    name: company-services

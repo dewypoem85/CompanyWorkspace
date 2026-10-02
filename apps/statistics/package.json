@@ -1,0 +1,31 @@
+{
+  "name": "company-statistics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "PlayFab 게임 로그를 집계하고 시각화하는 사내 통계 시스템",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "start:worker": "node clickhouse-worker.js",
+    "dev": "vite",
+    "build": "vite build",
+    "test:clickhouse": "node test/clickhouse-smoke.mjs",
+    "check": "tsc --noEmit && node --check server.js && node --check company-gateway.js && node --check app-server.js && node --check analytics-worker.js && node --check clickhouse-worker.js && node --check lib/clickhouse-client.js && node --check lib/clickhouse-schema.js && node --check lib/clickhouse-ingest.js && node --check lib/clickhouse-statistics.js && node --check lib/entity-details-store.js && node --check lib/playfab-azure-source.js && node --check lib/playfab-parquet-reader-pool.js && node --check lib/playfab-parquet-reader-thread.js && node --check lib/legacy-index-source.js && node --check lib/playfab-analytics.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "hyparquet": "1.26.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^5.9.2",
+    "vite": "^8.3.0"
+  }
+}

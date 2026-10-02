@@ -1,0 +1,133 @@
+{
+  "version": 2,
+  "sealed": true,
+  "entries": [
+    {
+      "path": "apps/leave/Pages/Admin/_ApprovalAction.cshtml",
+      "owner": "연차 승인 결정 폼 partial",
+      "forms": [
+        { "identity": "form|asp-page=/Admin/Index|asp-page-handler=@Model.Operation|marker=data-approval-form", "contract": "packages/contracts/leave-approvals.md" }
+      ]
+    },
+    {
+      "path": "apps/leave/Pages/Admin/_GrantRow.cshtml",
+      "owner": "연차 발생분 삭제 폼 partial",
+      "forms": [
+        { "identity": "form|asp-page=/Admin/Adjustments|asp-page-handler=DeleteGrant|marker=data-grant-form:DeleteGrant", "contract": "packages/contracts/leave-grants.md" }
+      ]
+    },
+    {
+      "path": "apps/leave/Pages/Admin/_HolidayRow.cshtml",
+      "owner": "공휴일 삭제 폼 partial",
+      "forms": [
+        { "identity": "form|asp-page=/Admin/Holidays|asp-page-handler=Delete|marker=data-holiday-action:Delete", "contract": "packages/contracts/leave-holidays.md" }
+      ]
+    },
+    {
+      "path": "apps/leave/Pages/Admin/_WebhookRow.cshtml",
+      "owner": "알림 웹훅 삭제 폼 partial",
+      "forms": [
+        { "identity": "form|asp-page=/Admin/NotificationSettings|asp-page-handler=Delete|marker=data-webhook-action:Delete", "contract": "packages/contracts/leave-webhooks.md" }
+      ]
+    },
+    {
+      "path": "apps/leave/Pages/Admin/Adjustments.cshtml",
+      "owner": "연차 발생분 변경 폼",
+      "forms": [
+        { "identity": "form|asp-page-handler=AddGrant|marker=data-grant-form:AddGrant", "contract": "packages/contracts/leave-grants.md" },
+        { "identity": "form|marker=data-grant-form:Adjust", "contract": "packages/contracts/leave-grants.md" }
+      ]
+    },
+    {
+      "path": "apps/leave/Pages/Admin/Holidays.cshtml",
+      "owner": "공휴일 가져오기·추가 폼",
+      "forms": [
+        { "identity": "form|asp-page-handler=Add|marker=data-holiday-action:Add", "contract": "packages/contracts/leave-holidays.md" },
+        { "identity": "form|asp-page-handler=ImportJson|marker=data-holiday-action:ImportJson", "contract": "packages/contracts/leave-holidays.md" },
+        { "identity": "form|asp-page-handler=ImportOnline|marker=data-holiday-action:ImportOnline", "contract": "packages/contracts/leave-holidays.md" }
+      ]
+    },
+    {
+      "path": "apps/leave/Pages/Admin/NotificationSettings.cshtml",
+      "owner": "알림 웹훅 추가·테스트 폼",
+      "forms": [
+        { "identity": "form|asp-page-handler=Add|marker=data-webhook-action:Add", "contract": "packages/contracts/leave-webhooks.md" },
+        { "identity": "form|asp-page-handler=Test|marker=data-webhook-action:Test", "contract": "packages/contracts/leave-webhooks.md" }
+      ]
+    },
+    {
+      "path": "apps/leave/Pages/Admin/Settlements.cshtml",
+      "owner": "연차 정산 폼",
+      "forms": [
+        { "identity": "form|marker=data-settlement-form", "contract": "packages/contracts/leave-settlements.md" }
+      ]
+    },
+    {
+      "path": "apps/leave/Pages/Leave/_SelfActionForm.cshtml",
+      "owner": "직원 연차 취소 동작 폼 partial",
+      "forms": [
+        { "identity": "form|asp-page-handler=@Model.Operation|id=@Model.FormId|marker=data-leave-self-action:@Model.Operation", "contract": "packages/contracts/leave-self-actions.md" }
+      ]
+    },
+    {
+      "path": "apps/leave/Pages/Leave/Index.cshtml",
+      "owner": "연차 신청·관리·외부 일정 폼",
+      "forms": [
+        { "identity": "form|asp-page-handler=AdminForceAdd|id=adminForceAddForm", "contract": "packages/contracts/leave-calendar-admin.md" },
+        { "identity": "form|asp-page-handler=AdminForceDelete|id=adminForceDeleteForm", "contract": "packages/contracts/leave-calendar-admin.md" },
+        { "identity": "form|asp-page-handler=Apply|id=applyForm", "contract": "packages/contracts/leave-application.md" },
+        { "identity": "form|asp-page-handler=ExternalScheduleDelete|id=externalScheduleDeleteForm", "contract": "packages/contracts/leave-external-schedules.md" },
+        { "identity": "form|asp-page-handler=ExternalScheduleSave|id=externalScheduleForm", "contract": "packages/contracts/leave-external-schedules.md" }
+      ]
+    },
+    {
+      "path": "apps/leave/Pages/Notifications/Index.cshtml",
+      "owner": "연차 알림 읽기·열기 폼",
+      "forms": [
+        { "identity": "form|asp-page-handler=MarkAllRead|marker=data-notification-action:MarkAllRead", "contract": "packages/contracts/notifications.md" },
+        { "identity": "form|asp-page-handler=MarkRead|marker=data-notification-action:MarkRead", "contract": "packages/contracts/notifications.md" },
+        { "identity": "form|asp-page-handler=Open|marker=data-notification-action:Open", "contract": "packages/contracts/notifications.md" }
+      ]
+    },
+    {
+      "path": "apps/leave/Pages/Settings/Discord.cshtml",
+      "owner": "Discord 연결·설정 폼",
+      "forms": [
+        { "identity": "form|asp-page-handler=Link|marker=data-discord-action:Link", "contract": "packages/contracts/leave-discord-controls.md" },
+        { "identity": "form|asp-page-handler=Save|marker=data-discord-action:Save", "contract": "packages/contracts/leave-discord-controls.md" },
+        { "identity": "form|asp-page-handler=Test|marker=data-discord-action:Test", "contract": "packages/contracts/leave-discord-controls.md" },
+        { "identity": "form|asp-page-handler=Unlink|marker=data-discord-action:Unlink", "contract": "packages/contracts/leave-discord-controls.md" }
+      ]
+    },
+    {
+      "path": "apps/portal/Pages/Admin/Organization.cshtml",
+      "owner": "조직·프로젝트 아이콘 폼",
+      "forms": [
+        { "identity": "form|asp-page-handler=Icon|marker=data-project-icon-form", "contract": "packages/contracts/organization.md" },
+        { "identity": "form|marker=data-organization-form", "contract": "packages/contracts/organization.md" }
+      ]
+    },
+    {
+      "path": "apps/portal/Pages/Admin/Users.cshtml",
+      "owner": "직원 등록·일괄 변경 폼",
+      "forms": [
+        { "identity": "form|asp-page-handler=Add|marker=data-add-account-form", "contract": "packages/contracts/portal-account-writes.md" },
+        { "identity": "form|asp-page-handler=BulkUpdate|marker=data-bulk-form", "contract": "packages/contracts/portal-account-writes.md" }
+      ]
+    },
+    {
+      "path": "apps/portal/Pages/Auth/Launch.cshtml",
+      "owner": "회사 SSO form_post 시작",
+      "forms": [
+        { "identity": "form|action=@Model.CallbackUrl|id=ssoLaunchForm", "contract": "packages/contracts/sso-launch.md" }
+      ]
+    },
+    {
+      "path": "apps/portal/Pages/Settings/Profile.cshtml",
+      "owner": "프로필 이미지 변경 폼",
+      "forms": [
+        { "identity": "form|marker=data-profile-form", "contract": "packages/contracts/profile.md" }
+      ]
+    }
+  ]
+}
