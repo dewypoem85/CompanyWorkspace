@@ -53,6 +53,16 @@ function asyncRoute(handler: (request: Request, response: Response) => Promise<v
   };
 }
 
+// 로컬 실행용 공통 테마 CSS: 회사 도메인(company.example.com)이 내려주는 것과 같은 생성 파일
+// (packages/workspace-ui 의 테마·내비게이션·공통 컴포넌트 묶음, tooling/build-ui.mjs 생성)을 저장소에서 직접 제공한다.
+// 이 서버는 127.0.0.1 에만 바인딩되므로 로컬 접속에서만 쓰인다 (index.html 의 로컬 감지 스크립트가 연결).
+const LOCAL_WORKSPACE_CSS = path.resolve(__dirname, '../../../portal/wwwroot/css/company-workspace.css');
+app.get('/local-workspace/company-workspace.css', (_req, res) => {
+  res.sendFile(LOCAL_WORKSPACE_CSS, { headers: { 'Cache-Control': 'no-cache' } }, (err) => {
+    if (err && !res.headersSent) res.status(404).type('text/plain').send('공통 테마 CSS를 찾을 수 없습니다: ' + LOCAL_WORKSPACE_CSS);
+  });
+});
+
 // 헬스체크
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'smart-translator', time: new Date().toISOString() });

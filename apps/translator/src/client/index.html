@@ -5,6 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>스마트 번역</title>
   <link rel="stylesheet" href="https://company.example.com/css/company-workspace.css">
+  <script>
+    // 로컬 실행(127.0.0.1/localhost)에서는 회사 도메인의 공통 CSS에 닿지 않으므로 같은 생성 파일을 이 서버에서 불러오고 다크 모드로 표시한다.
+    // 공통 셸이 없는 로컬 단독 실행 전용이며, 팔레트는 공통 CSS의 html[data-theme="dark"] 정의를 그대로 사용한다.
+    (function () {
+      var host = location.hostname;
+      if (host !== '127.0.0.1' && host !== 'localhost' && host !== '[::1]' && host !== '::1') return;
+      var link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '/local-workspace/company-workspace.css';
+      document.head.appendChild(link);
+      document.documentElement.dataset.theme = 'dark';
+      document.documentElement.style.colorScheme = 'dark';
+    })();
+  </script>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body class="has-company-workspace">
