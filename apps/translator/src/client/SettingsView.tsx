@@ -512,21 +512,21 @@ export function SettingsView({ onConfigSaved, tab, onDirtyChange }: SettingsView
             <button
               type="button"
               className="cw-button"
-              data-variant="primary"
-              onClick={handleSaveSheetUrl}
-              disabled={savingSheetUrl || !targetSheetUrl.trim()}
-              title="입력한 시트 주소를 환경 설정에 저장합니다."
-            >
-              {savingSheetUrl ? '저장 중…' : '💾 주소 저장'}
-            </button>
-            <button
-              type="button"
-              className="cw-button"
               onClick={() => handleTestSa()}
               disabled={testingSa || (!targetSheetUrl.trim() && !activeSa)}
               title="입력된 I2 웹서비스 URL 또는 구글 스프레드시트의 실시간 연동 상태를 테스트합니다."
             >
               {testingSa ? '⏳ 연결 검증 중…' : '🔍 연결 테스트'}
+            </button>
+            <button
+              type="button"
+              className="cw-button"
+              data-variant="primary"
+              onClick={handleSaveSheetUrl}
+              disabled={savingSheetUrl || !targetSheetUrl.trim() || targetSheetUrl.trim() === savedSheetUrl.trim()}
+              title={targetSheetUrl.trim() === savedSheetUrl.trim() ? '저장된 주소와 같아 저장할 변경이 없습니다.' : '입력한 시트 주소를 환경 설정에 저장합니다.'}
+            >
+              {savingSheetUrl ? '저장 중…' : '💾 저장'}
             </button>
           </div>
 
