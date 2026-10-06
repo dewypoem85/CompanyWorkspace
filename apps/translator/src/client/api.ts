@@ -167,6 +167,7 @@ export const api = {
       source?: GlossarySource | null;
       sheet_error?: string;
       sheet_empty?: boolean;
+      configured_url?: string;
     }>(`/api/smart-translator/glossary${refresh ? '?refresh=true' : ''}`, { signal }),
   testGlossary: (url: string, signal?: AbortSignal) =>
     request<{ success: boolean; source?: GlossarySource; total?: number; languages?: string[]; warnings?: string[]; is_default?: boolean; error?: string }>(

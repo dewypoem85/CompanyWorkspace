@@ -32,6 +32,8 @@ export function GlossaryView({ refreshKey = 0 }: { refreshKey?: number } = {}) {
   // 실제로 연결된 용어집 시트 (환경 설정 > 데이터 연결의 주소). 저장 시 같은 시트인지 서버에서 대조
   const [source, setSource] = useState<GlossarySource | null>(null);
   const [sheetError, setSheetError] = useState<string>('');
+  // 환경 설정의 용어집 시트 주소 (접속에 실패해도 원본 링크는 이 주소로 유지)
+  const [configuredUrl, setConfiguredUrl] = useState<string>('');
 
   // 페이지네이션
   const [page, setPage] = useState<number>(1);
@@ -49,6 +51,7 @@ export function GlossaryView({ refreshKey = 0 }: { refreshKey?: number } = {}) {
         setSyncedFromSheet(Boolean(res.synced_from_sheet));
         setSource(res.source || null);
         setSheetError(res.sheet_error || '');
+        setConfiguredUrl(res.configured_url || '');
         setIsDirty(false);
       } else {
         setMessage({ type: 'error', text: '용어집 데이터를 불러오지 못했습니다.' });
@@ -217,8 +220,8 @@ export function GlossaryView({ refreshKey = 0 }: { refreshKey?: number } = {}) {
           >
             {loading ? '⏳ 동기화 중…' : '🔄 시트 새로고침'}
           </button>
-          {source && (
-            <a href={source.url} target="_blank" rel="noreferrer" className="cw-button">
+          {(source?.url || configuredUrl) && (
+            <a href={source?.url || configuredUrl} target="_blank" rel="noreferrer" className="cw-button">
               🔗 구글 시트 원본 ↗
             </a>
           )}

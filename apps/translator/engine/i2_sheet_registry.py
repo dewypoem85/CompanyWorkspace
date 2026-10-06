@@ -835,25 +835,38 @@ def glossary_key_candidates(sa_json_path: str = "") -> list:
     return out
 
 
+def _key_email(key_path: str) -> str:
+    try:
+        with open(key_path, "r", encoding="utf-8") as f:
+            return str(json.load(f).get("client_email") or "")
+    except Exception:
+        return ""
+
+
 def open_glossary_worksheet(glossary_url: str = "", sa_json_path: str = ""):
     """설정된 용어집 시트의 워크시트와 출처 정보를 반환. 실패하면 사유가 담긴 예외를 올린다.
     반환: (worksheet, {"sheet_key", "sheet_title", "tab", "gid", "url", "note"})"""
+    import paths
     sheet_key, gid = parse_glossary_url(glossary_url)
     candidates = glossary_key_candidates(sa_json_path)
+    fallback_missing = not os.path.isfile(os.path.join(paths.KEYS_DIR, GLOSSARY_FALLBACK_KEY_FILE))
+    missing_hint = (f" 용어집 전용 키({GLOSSARY_FALLBACK_KEY_FILE})가 engine/keys 폴더에 없습니다."
+                    " 기존 번역기 폴더의 engine/keys 에서 복사하세요.") if fallback_missing else ""
     if not candidates:
-        raise FileNotFoundError("용어집 시트에 접근할 서비스 계정 키가 없습니다. [환경 설정 > 데이터 연결]에서 키를 등록하세요.")
+        raise FileNotFoundError("용어집 시트에 접근할 서비스 계정 키가 없습니다. [환경 설정 > 데이터 연결]에서 키를 등록하세요." + missing_hint)
     import gspread
-    from google.oauth2.service_account import Credentials
-    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-    sh, last_err = None, None
+    sh, tried = None, []
     for kp in candidates:
         try:
-            sh = gspread.authorize(Credentials.from_service_account_file(kp, scopes=scopes)).open_by_key(sheet_key)
+            # 기존 용어집 화면과 같은 인증 방식 (gspread 기본 권한 범위)
+            sh = gspread.service_account(filename=kp).open_by_key(sheet_key)
             break
         except Exception as e:
-            last_err = e
+            email = _key_email(kp)
+            tried.append(f"{os.path.basename(kp)}{f' ({email})' if email else ''}: {type(e).__name__}{f' {e}' if str(e) else ''}")
     if sh is None:
-        raise PermissionError(f"용어집 시트를 열 수 없습니다 (서비스 계정 공유 권한 확인): {type(last_err).__name__} {last_err}".strip())
+        raise PermissionError("용어집 시트를 열 수 없습니다 (서비스 계정 공유 권한 확인). 시도한 키: " + " / ".join(tried) + "."
+                              + missing_hint + " 또는 시도한 키의 이메일에 용어집 시트를 공유하세요.")
     worksheets = sh.worksheets()
     ws, note = None, ""
     if gid is not None:

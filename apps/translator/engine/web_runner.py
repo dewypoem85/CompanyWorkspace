@@ -390,7 +390,7 @@ def _same_glossary_source(expected, info) -> bool:
 
 def action_get_glossary():
     import csv
-    from i2_sheet_registry import open_glossary_worksheet
+    from i2_sheet_registry import open_glossary_worksheet, DEFAULT_GLOSSARY_URL
     headers = list(DEFAULT_GLOSSARY_HEADERS)
     rows = []
     source = None       # 실제로 연결된 용어집 시트 (화면 표시 + 저장 시 대조용)
@@ -436,6 +436,7 @@ def action_get_glossary():
         "source": source,
         "sheet_error": sheet_error,
         "sheet_empty": sheet_empty,
+        "configured_url": url or DEFAULT_GLOSSARY_URL,   # 접속 실패여도 화면의 원본 링크는 유지
     }, ensure_ascii=False))
 
 

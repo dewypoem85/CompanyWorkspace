@@ -49,7 +49,7 @@ class FakeSpreadsheet:
         return self._ws
 
 
-def fake_google(sheets: dict, opened: list):
+def fake_google(sheets: dict, opened: list, denied=None):
     """sheets: {sheet_key: FakeSpreadsheet}. 열린 키를 opened 에 기록"""
     gspread = types.ModuleType("gspread")
 
@@ -60,15 +60,19 @@ def fake_google(sheets: dict, opened: list):
                 raise PermissionError("403 no access")
             return sheets[key]
 
-    gspread.authorize = lambda creds: Client()
-    sa = types.ModuleType("google.oauth2.service_account")
-    sa.Credentials = types.SimpleNamespace(from_service_account_file=lambda path, scopes=None: object())
-    oauth2 = types.ModuleType("google.oauth2")
-    oauth2.service_account = sa
-    google = types.ModuleType("google")
-    google.oauth2 = oauth2
-    return mock.patch.dict(sys.modules, {"gspread": gspread, "google": google, "google.oauth2": oauth2,
-                                         "google.oauth2.service_account": sa})
+    def service_account(filename=None):
+        used_keys.append(filename)
+        if filename in denied_keys:
+            class Denied:
+                def open_by_key(self, key):
+                    opened.append(key)
+                    raise PermissionError()  # gspread 는 403 을 메시지 없는 PermissionError 로 올린다
+            return Denied()
+        return Client()
+
+    used_keys, denied_keys = [], set(denied or ())
+    gspread.service_account = service_account
+    return mock.patch.dict(sys.modules, {"gspread": gspread})
 
 
 GLOSSARY_VALUES = [["Korean", "English", "Spain"], ["체력", "HP", "Salud"], ["물약", "Potion", "Poción"]]
@@ -128,6 +132,38 @@ class OpenGlossaryWorksheetTest(unittest.TestCase):
         with self.assertRaises(PermissionError):
             self._open(NEW_URL, {})
 
+    def test_permission_error_lists_tried_keys_and_missing_fallback(self):
+        # 새 폴더처럼 용어집 전용 키가 없고, 선택한 키는 시트에 공유되지 않은 경우
+        with open(self.keyfile.name, "w", encoding="utf-8") as f:
+            json.dump({"client_email": "main@proj.iam.gserviceaccount.com"}, f)
+        keys_dir = tempfile.mkdtemp()
+        self.addCleanup(lambda: __import__("shutil").rmtree(keys_dir, ignore_errors=True))
+        sheets = {DEFAULT_KEY: FakeSpreadsheet("용어집", [FakeWorksheet(2046126010, "새 탭", GLOSSARY_VALUES)])}
+        opened = []
+        new_tab = "https://docs.google.com/spreadsheets/d/1rrbDpylaH9580GkUYtrXEqNGr0OHuzIFQNlsSzK7QPI/edit?gid=2046126010#gid=2046126010"
+        with fake_google(sheets, opened, denied={self.keyfile.name}), \
+                mock.patch.object(reg, "glossary_key_candidates", return_value=[self.keyfile.name]), \
+                mock.patch("paths.KEYS_DIR", keys_dir):
+            with self.assertRaises(PermissionError) as cm:
+                reg.open_glossary_worksheet(new_tab, "")
+        msg = str(cm.exception)
+        self.assertIn("main@proj.iam.gserviceaccount.com", msg)
+        self.assertIn(reg.GLOSSARY_FALLBACK_KEY_FILE, msg)
+        self.assertIn("복사", msg)
+
+    def test_second_key_used_when_first_denied(self):
+        second = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
+        self.addCleanup(os.unlink, second.name)
+        ws = FakeWorksheet(2046126010, "새 탭", GLOSSARY_VALUES)
+        sheets = {DEFAULT_KEY: FakeSpreadsheet("용어집", [ws])}
+        opened = []
+        url = "https://docs.google.com/spreadsheets/d/1rrbDpylaH9580GkUYtrXEqNGr0OHuzIFQNlsSzK7QPI/edit?gid=2046126010#gid=2046126010"
+        with fake_google(sheets, opened, denied={self.keyfile.name}), \
+                mock.patch.object(reg, "glossary_key_candidates", return_value=[self.keyfile.name, second.name]):
+            got, info = reg.open_glossary_worksheet(url, "")
+        self.assertIs(got, ws)
+        self.assertEqual((info["gid"], opened), (2046126010, [DEFAULT_KEY, DEFAULT_KEY]))
+
     def test_no_key_files(self):
         with mock.patch.object(reg, "glossary_key_candidates", return_value=[]):
             with self.assertRaises(FileNotFoundError):
@@ -176,6 +212,12 @@ class WebRunnerGlossaryTest(unittest.TestCase):
         self.assertIsNone(out["source"])
         self.assertIn("공유 권한 없음", out["sheet_error"])
         self.assertEqual(out["rows"][0]["Korean"], "로컬")
+        self.assertEqual(out["configured_url"], NEW_URL)  # 접속 실패여도 원본 링크용 주소는 유지
+
+    def test_get_configured_url_defaults(self):
+        out, _ = self._run(web_runner.action_get_glossary, None, open_error=PermissionError("x"),
+                           cfg={"glossary_sheet_url": "", "service_account_json_path": ""})
+        self.assertEqual(out["configured_url"], reg.DEFAULT_GLOSSARY_URL)
 
     def _save(self, ws, info, expected, loaded_from_sheet):
         return self._run(web_runner.action_save_glossary,
