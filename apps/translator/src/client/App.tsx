@@ -58,6 +58,7 @@ export function App() {
             <li>
               <button
                 className={`nav-item ${activeMenu === 'main' ? 'active' : ''}`}
+                aria-current={activeMenu === 'main' ? 'page' : undefined}
                 onClick={() => handleMenuChange('main')}
               >
                 <span>🚀</span> AI 번역 및 검수
@@ -66,6 +67,7 @@ export function App() {
             <li>
               <button
                 className={`nav-item ${activeMenu === 'glossary' ? 'active' : ''}`}
+                aria-current={activeMenu === 'glossary' ? 'page' : undefined}
                 onClick={() => handleMenuChange('glossary')}
               >
                 <span>📖</span> 용어집 (Glossary)
@@ -74,6 +76,7 @@ export function App() {
             <li>
               <button
                 className={`nav-item ${activeMenu === 'settings' ? 'active' : ''}`}
+                aria-current={activeMenu === 'settings' ? 'page' : undefined}
                 onClick={() => openSettings()}
               >
                 <span>⚙️</span> 환경 설정
@@ -110,6 +113,7 @@ export function App() {
             <li>
               <button
                 className={`nav-item ${activeMenu === 'test' ? 'active' : ''}`}
+                aria-current={activeMenu === 'test' ? 'page' : undefined}
                 onClick={() => handleMenuChange('test')}
               >
                 <span>🧪</span> 테스트 모드 (직접 URL)

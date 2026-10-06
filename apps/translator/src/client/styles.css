@@ -108,6 +108,8 @@ body.has-company-workspace {
   background: var(--cw-accent-soft);
   color: var(--cw-accent);
   font-weight: 600;
+  /* 공통 CSS 색 토큰이 없을 때도 선택 위치가 보이도록 색과 무관한 왼쪽 표시선 (현재 글자색 사용) */
+  box-shadow: inset 3px 0 0 currentColor;
 }
 
 /* ── 우측 메인 영역 (사이드바 240px 제외한 나머지 전체) ───── */
@@ -217,6 +219,8 @@ body.has-company-workspace {
   background: var(--cw-accent-soft);
   color: var(--cw-accent);
   font-weight: 600;
+  /* 공통 CSS 색 토큰이 없을 때도 선택 위치가 보이도록 색과 무관한 왼쪽 표시선 (현재 글자색 사용) */
+  box-shadow: inset 3px 0 0 currentColor;
 }
 
 .nav-sub-dirty {
