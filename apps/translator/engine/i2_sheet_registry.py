@@ -800,9 +800,84 @@ def parse_local_i2languages_asset(asset_path: str = None, category_filter: str =
     return headers, rows
 
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 용어집 시트 연결 (번역 파이프라인·용어집 화면 조회/저장·연결 테스트가 같은 규칙을 공유)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DEFAULT_GLOSSARY_URL = "https://docs.google.com/spreadsheets/d/1rrbDpylaH9580GkUYtrXEqNGr0OHuzIFQNlsSzK7QPI/edit#gid=181735466"
+# 주소에 gid 가 없거나 해당 탭이 없을 때 찾는 탭 이름 (기존 파이프라인 'Glossary', 기존 용어집 화면 '번역키')
+GLOSSARY_TAB_NAMES = ("Glossary", "번역키")
+# 용어집 시트 전용 기본 서비스 계정 키 (선택한 키로 접근 못 할 때 두 번째로 시도)
+GLOSSARY_FALLBACK_KEY_FILE = "nspg-498907-a319691c5bb3.json"
+
+
+def parse_glossary_url(glossary_url: str = "") -> tuple:
+    """용어집 주소 → (시트 키, gid 또는 None). 빈 값은 기본 용어집. 형식이 틀리면 ValueError
+    (예전처럼 다른 시트를 대신 열지 않는다)."""
+    url = (glossary_url or "").strip() or DEFAULT_GLOSSARY_URL
+    m = re.search(r"/spreadsheets/d/([a-zA-Z0-9_-]+)", url)
+    if not m:
+        raise ValueError("구글 스프레드시트 주소 형식이 아닙니다. (https://docs.google.com/spreadsheets/d/... 형식)")
+    g = re.search(r"[#&?]gid=(\d+)", url)
+    return m.group(1), (int(g.group(1)) if g else None)
+
+
+def glossary_key_candidates(sa_json_path: str = "") -> list:
+    """용어집 접근에 시도할 서비스 계정 키 파일: 환경 설정에서 선택한 키 → 용어집 전용 기본 키"""
+    import paths
+    out = []
+    if sa_json_path:
+        p = paths.resolve_key_file(sa_json_path)
+        if os.path.isfile(p):
+            out.append(p)
+    fallback = os.path.join(paths.KEYS_DIR, GLOSSARY_FALLBACK_KEY_FILE)
+    if os.path.isfile(fallback) and fallback not in out:
+        out.append(fallback)
+    return out
+
+
+def open_glossary_worksheet(glossary_url: str = "", sa_json_path: str = ""):
+    """설정된 용어집 시트의 워크시트와 출처 정보를 반환. 실패하면 사유가 담긴 예외를 올린다.
+    반환: (worksheet, {"sheet_key", "sheet_title", "tab", "gid", "url", "note"})"""
+    sheet_key, gid = parse_glossary_url(glossary_url)
+    candidates = glossary_key_candidates(sa_json_path)
+    if not candidates:
+        raise FileNotFoundError("용어집 시트에 접근할 서비스 계정 키가 없습니다. [환경 설정 > 데이터 연결]에서 키를 등록하세요.")
+    import gspread
+    from google.oauth2.service_account import Credentials
+    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+    sh, last_err = None, None
+    for kp in candidates:
+        try:
+            sh = gspread.authorize(Credentials.from_service_account_file(kp, scopes=scopes)).open_by_key(sheet_key)
+            break
+        except Exception as e:
+            last_err = e
+    if sh is None:
+        raise PermissionError(f"용어집 시트를 열 수 없습니다 (서비스 계정 공유 권한 확인): {type(last_err).__name__} {last_err}".strip())
+    worksheets = sh.worksheets()
+    ws, note = None, ""
+    if gid is not None:
+        ws = next((w for w in worksheets if w.id == gid), None)
+        if ws is None:
+            note = f"주소의 탭(gid={gid})이 없어 탭 이름으로 찾았습니다."
+    if ws is None:
+        ws = next((w for name in GLOSSARY_TAB_NAMES for w in worksheets if w.title == name), None)
+    if ws is None:
+        raise LookupError(f"용어집 탭을 찾을 수 없습니다. 주소에 탭(gid)을 포함하거나 탭 이름을 {' 또는 '.join(GLOSSARY_TAB_NAMES)}(으)로 지정하세요.")
+    info = {
+        "sheet_key": sheet_key,
+        "sheet_title": sh.title,
+        "tab": ws.title,
+        "gid": ws.id,
+        "url": f"https://docs.google.com/spreadsheets/d/{sheet_key}/edit#gid={ws.id}",
+        "note": note,
+    }
+    return ws, info
+
+
 def fetch_glossary_from_google_sheet(glossary_url: str = "", sa_json_path: str = "") -> dict[str, dict[str, str]]:
     """
-    구글 스프레드시트의 Glossary 탭에서 고유명사 사전을 실시간으로 가져옵니다.
+    설정된 용어집 시트(open_glossary_worksheet)에서 고유명사 사전을 실시간으로 가져옵니다.
     반환: { "체력": { "English": "HP", "Japanese": "体力", ... }, ... }
     실패 시 로컬 I2_Glossary_고유명사용어사전.csv로 fallback합니다.
     """
@@ -810,54 +885,10 @@ def fetch_glossary_from_google_sheet(glossary_url: str = "", sa_json_path: str =
     import paths
     default_csv_path = os.path.join(paths.DATA_DIR, "I2_Glossary_고유명사용어사전.csv")
 
-    if not glossary_url:
-        glossary_url = "https://docs.google.com/spreadsheets/d/1rrbDpylaH9580GkUYtrXEqNGr0OHuzIFQNlsSzK7QPI/edit#gid=181735466"
-    # 용어집 시트는 회사 공용 시트라 선택 키(sa_json_path)로 먼저 시도하고, 접근 권한이 없으면
-    # 용어집 전용 기본 키(nspg)로 시도한다. (둘 다 실패해야 오래된 로컬 CSV로 대체)
-    base_dir = paths.KEYS_DIR
-    key_candidates = []
-    if sa_json_path:
-        _p = paths.resolve_key_file(sa_json_path)
-        if os.path.isfile(_p):
-            key_candidates.append(_p)
-    _nspg = os.path.join(base_dir, "nspg-498907-a319691c5bb3.json")
-    if os.path.isfile(_nspg) and _nspg not in key_candidates:
-        key_candidates.append(_nspg)
-
     # 1. 구글 시트에서 실시간 다운로드 시도
     try:
-        import gspread
-        from google.oauth2.service_account import Credentials
-
-        # URL에서 Sheet ID 추출
-        match = re.search(r'/d/([a-zA-Z0-9-_]+)', glossary_url)
-        sheet_key = match.group(1) if match else "1c1LyP3OUej2acQ5KGWuYQRoY5AhEM4p8rw7ZmLPckHA"
-
-        scopes = ['https://www.googleapis.com/auth/spreadsheets']
-        sh = None
-        last_key_err = None
-        for kp in key_candidates:
-            try:
-                creds = Credentials.from_service_account_file(kp, scopes=scopes)
-                sh = gspread.authorize(creds).open_by_key(sheet_key)
-                break
-            except Exception as ke:
-                last_key_err = ke
-        if sh is None:
-            raise last_key_err or FileNotFoundError("용어집용 서비스 계정 키 없음")
-
-        # 'Glossary' 탭 탐색 (gid 일치 또는 이름 일치)
-        ws = None
-        gid_match = re.search(r'gid=(\d+)', glossary_url)
-        if gid_match:
-            gid = int(gid_match.group(1))
-            for w in sh.worksheets():
-                if w.id == gid:
-                    ws = w
-                    break
-        if not ws:
-            ws = sh.worksheet("Glossary")
-
+        ws, info = open_glossary_worksheet(glossary_url, sa_json_path)
+        print(f"[Glossary] 용어집 시트: '{info['sheet_title']}' / 탭 '{info['tab']}'" + (f" ({info['note']})" if info["note"] else ""))
         all_values = ws.get_all_values()
         if all_values and len(all_values) > 1:
             headers = all_values[0]

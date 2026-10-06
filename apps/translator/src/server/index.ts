@@ -11,6 +11,7 @@ import {
   handleDetectLanguages,
   handleGetGlossary,
   handleSaveGlossary,
+  handleTestGlossary,
   handleGetResults,
   handleGetStatus,
   handleStartJob,
@@ -77,6 +78,7 @@ app.get('/api/smart-translator/models', asyncRoute(handleGetModels));
 app.post('/api/smart-translator/detect-languages', asyncRoute(handleDetectLanguages));
 app.get('/api/smart-translator/glossary', asyncRoute(handleGetGlossary));
 app.post('/api/smart-translator/glossary', asyncRoute(handleSaveGlossary));
+app.post('/api/smart-translator/glossary/test', asyncRoute(handleTestGlossary));
 app.get('/api/smart-translator/results', asyncRoute(handleGetResults));
 app.post('/api/smart-translator/results/clear', asyncRoute(handleClearResults));
 app.get('/api/smart-translator/status', handleGetStatus);

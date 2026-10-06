@@ -254,6 +254,7 @@ export async function handleSaveConfig(req: Request, res: Response): Promise<voi
     const options = req.body || {};
     sheetsCache = null; // 설정 변경 시 시트 캐시 즉시 무효화
     modelsCache.clear(); // API 키가 바뀌면 조회 가능한 모델도 달라짐
+    glossaryCache = null; // 용어집 시트 주소가 바뀌었을 수 있음
     const raw = await runPythonCommand(['--action', 'save_config', '--options', JSON.stringify(options)]);
     const data = JSON.parse(raw);
     res.json(data);
@@ -278,6 +279,17 @@ export async function handleGetGlossary(req: Request, res: Response): Promise<vo
       glossaryCache = { data, timestamp: now };
     }
     res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+// 환경 설정에서 입력한 용어집 시트 주소를 저장 전에 확인 (읽기만 함)
+export async function handleTestGlossary(req: Request, res: Response): Promise<void> {
+  try {
+    const url = String(req.body?.url ?? '');
+    const raw = await runPythonCommand(['--action', 'test_glossary', '--options', JSON.stringify({ url })]);
+    res.json(JSON.parse(raw));
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

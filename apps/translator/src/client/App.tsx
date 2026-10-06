@@ -181,7 +181,7 @@ export function App() {
           </div>
 
           <div style={{ display: activeMenu === 'glossary' ? 'block' : 'none' }}>
-            <GlossaryView />
+            <GlossaryView refreshKey={refreshKey} />
           </div>
 
           <div style={{ display: activeMenu === 'settings' ? 'block' : 'none' }}>

@@ -347,6 +347,16 @@ def action_save_config(options_json):
             elif "/spreadsheets/d/" in u:
                 cfg["target_source_mode"] = "custom_url"
 
+        if "glossary_sheet_url" in data:
+            # 형식이 틀린 주소는 저장하지 않는다 (빈 값 = 기본 용어집)
+            from i2_sheet_registry import parse_glossary_url
+            cfg["glossary_sheet_url"] = str(data["glossary_sheet_url"] or "").strip()
+            try:
+                parse_glossary_url(cfg["glossary_sheet_url"])
+            except ValueError as e:
+                print(json.dumps({"success": False, "error": f"용어집 시트 주소 오류: {e}"}, ensure_ascii=False))
+                return
+
         save_config(cfg)
         print(json.dumps({"success": True, "message": "환경 설정이 안전하게 저장되었습니다."}, ensure_ascii=False))
     except Exception as e:
@@ -354,38 +364,53 @@ def action_save_config(options_json):
 
 GLOSSARY_CSV_PATH = os.path.join(paths.DATA_DIR, "I2_Glossary_고유명사용어사전.csv")
 GLOSSARY_XLSX_PATH = os.path.join(paths.DATA_DIR, "I2_Glossary_고유명사용어사전.xlsx")
-NSPG_SA_PATH = os.path.join(paths.KEYS_DIR, "nspg-498907-a319691c5bb3.json")
-GLOSSARY_SHEET_KEY = "1rrbDpylaH9580GkUYtrXEqNGr0OHuzIFQNlsSzK7QPI"
+DEFAULT_GLOSSARY_HEADERS = ["Korean", "English", "Japanese", "Chinese", "Chinese (Taiwan)", "Spain"]
+
+
+def _glossary_target():
+    """환경 설정의 용어집 시트 주소와 서비스 계정 키 (빈 주소 = 기본 용어집)"""
+    cfg = load_config()
+    return (cfg.get("glossary_sheet_url") or "").strip(), (cfg.get("service_account_json_path") or "").strip()
+
+
+def _rows_from_values(values):
+    headers = values[0]
+    rows = []
+    for idx, r in enumerate(values[1:], 1):
+        row_dict = {"id": idx}
+        for col_idx, h in enumerate(headers):
+            row_dict[h] = r[col_idx] if col_idx < len(r) else ""
+        rows.append(row_dict)
+    return headers, rows
+
+
+def _same_glossary_source(expected, info) -> bool:
+    return bool(expected) and str(expected.get("sheet_key")) == str(info.get("sheet_key")) and str(expected.get("gid")) == str(info.get("gid"))
+
 
 def action_get_glossary():
     import csv
-    headers = ["Korean", "English", "Japanese", "Chinese", "Chinese (Taiwan)", "Spain"]
+    from i2_sheet_registry import open_glossary_worksheet
+    headers = list(DEFAULT_GLOSSARY_HEADERS)
     rows = []
+    source = None       # 실제로 연결된 용어집 시트 (화면 표시 + 저장 시 대조용)
+    sheet_error = ""    # 시트를 쓰지 못한 이유 (로컬 CSV 로 대체된 경우 화면에 표시)
+    sheet_empty = False
 
-    # 1. 구글 스프레드시트 실시간 조회 시도
+    # 1. 환경 설정의 용어집 시트 실시간 조회
     synced_from_sheet = False
-    if os.path.exists(NSPG_SA_PATH):
-        try:
-            import gspread
-            gc = gspread.service_account(filename=NSPG_SA_PATH)
-            sh = gc.open_by_key(GLOSSARY_SHEET_KEY)
-            ws = None
-            for w in sh.worksheets():
-                if w.id == 181735466 or w.title == "번역키":
-                    ws = w
-                    break
-            if ws:
-                vals = ws.get_all_values()
-                if vals and len(vals) > 1:
-                    headers = vals[0]
-                    for idx, r in enumerate(vals[1:], 1):
-                        row_dict = {"id": idx}
-                        for col_idx, h in enumerate(headers):
-                            row_dict[h] = r[col_idx] if col_idx < len(r) else ""
-                        rows.append(row_dict)
-                    synced_from_sheet = True
-        except Exception:
-            pass
+    url, sa = _glossary_target()
+    try:
+        ws, source = open_glossary_worksheet(url, sa)
+        vals = ws.get_all_values()
+        if vals and len(vals) > 1:
+            headers, rows = _rows_from_values(vals)
+            synced_from_sheet = True
+        else:
+            sheet_empty = True
+            sheet_error = "용어집 시트의 탭이 비어 있습니다."
+    except Exception as e:
+        sheet_error = str(e) or type(e).__name__
 
     # 2. 구글 시트 실패 시 로컬 CSV fallback
     if not synced_from_sheet and os.path.exists(GLOSSARY_CSV_PATH):
@@ -407,15 +432,38 @@ def action_get_glossary():
         "headers": headers,
         "rows": rows,
         "synced_from_sheet": synced_from_sheet,
-        "total": len(rows)
+        "total": len(rows),
+        "source": source,
+        "sheet_error": sheet_error,
+        "sheet_empty": sheet_empty,
     }, ensure_ascii=False))
+
 
 def action_save_glossary(options_json):
     import csv
+    from i2_sheet_registry import open_glossary_worksheet
     try:
         data = json.loads(options_json) if options_json else {}
-        headers = data.get("headers") or ["Korean", "English", "Japanese", "Chinese", "Chinese (Taiwan)", "Spain"]
+        headers = data.get("headers") or list(DEFAULT_GLOSSARY_HEADERS)
         rows = data.get("rows") or []
+        expected = data.get("expected_source") or None          # 화면이 불러올 때 연결돼 있던 시트
+        loaded_from_sheet = bool(data.get("loaded_from_sheet"))
+
+        # 0. 현재 설정된 용어집 시트 확인 (쓰기 전에 대상부터 대조)
+        url, sa = _glossary_target()
+        ws, info, open_error = None, None, ""
+        try:
+            ws, info = open_glossary_worksheet(url, sa)
+        except Exception as e:
+            open_error = str(e) or type(e).__name__
+        if expected and info and not _same_glossary_source(expected, info):
+            # 편집하는 동안 환경 설정의 용어집 주소가 바뀌었음: 다른 시트를 덮어쓰지 않도록 아무것도 쓰지 않는다
+            print(json.dumps({
+                "success": False,
+                "error": f"용어집 시트 설정이 바뀌었습니다. (불러온 시트와 현재 설정된 시트 '{info['sheet_title']} / {info['tab']}'가 다름) 새로고침 후 다시 편집해 주세요.",
+                "source_changed": True,
+            }, ensure_ascii=False))
+            return
 
         # 1. 로컬 CSV 저장 (utf-8-sig)
         with open(GLOSSARY_CSV_PATH, "w", encoding="utf-8-sig", newline="") as f:
@@ -427,42 +475,74 @@ def action_save_glossary(options_json):
         # 2. 로컬 엑셀 저장
         try:
             wb = openpyxl.Workbook()
-            ws = wb.active
-            ws.title = "번역키"
-            ws.append(headers)
+            ws_x = wb.active
+            ws_x.title = "번역키"
+            ws_x.append(headers)
             for r in rows:
-                ws.append([r.get(h, "") for h in headers])
+                ws_x.append([r.get(h, "") for h in headers])
             wb.save(GLOSSARY_XLSX_PATH)
         except Exception as e:
             print(f"[경고] 엑셀 용어집 저장 오류: {e}", file=sys.stderr)
 
-        # 3. 구글 스프레드시트 동기화 시도
+        # 3. 구글 스프레드시트 동기화: 화면이 같은 시트에서 불러온 데이터이거나, 시트가 비어 있을 때만 덮어쓴다
         sheet_synced = False
-        if os.path.exists(NSPG_SA_PATH):
+        skip_reason = ""
+        if ws is None:
+            skip_reason = f"용어집 시트에 접근하지 못했습니다: {open_error}"
+        elif not loaded_from_sheet or not expected:
+            existing = ws.get_all_values()
+            if existing and len(existing) > 1:
+                skip_reason = "화면의 용어집이 시트가 아닌 로컬 파일에서 불러온 데이터라, 이미 내용이 있는 시트를 덮어쓰지 않았습니다."
+        if ws is not None and not skip_reason:
             try:
-                import gspread
-                gc = gspread.service_account(filename=NSPG_SA_PATH)
-                sh = gc.open_by_key(GLOSSARY_SHEET_KEY)
-                ws = None
-                for w in sh.worksheets():
-                    if w.id == 181735466 or w.title == "번역키":
-                        ws = w
-                        break
-                if ws:
-                    table_data = [headers] + [[r.get(h, "") for h in headers] for r in rows]
-                    ws.clear()
-                    ws.update(table_data)
-                    sheet_synced = True
+                table_data = [headers] + [[r.get(h, "") for h in headers] for r in rows]
+                ws.clear()
+                ws.update(table_data)
+                sheet_synced = True
             except Exception as e:
+                skip_reason = f"구글 시트 반영 실패: {e}"
                 print(f"[경고] 구글 시트 용어집 반영 실패: {e}", file=sys.stderr)
 
         print(json.dumps({
             "success": True,
             "message": f"용어집 총 {len(rows)}개 항목이 저장되었습니다." + (" (구글 시트 실시간 동기화 완료)" if sheet_synced else " (로컬 파일 저장 완료)"),
-            "sheet_synced": sheet_synced
+            "sheet_synced": sheet_synced,
+            "sheet_skip_reason": skip_reason,
+            "source": info,
         }, ensure_ascii=False))
     except Exception as e:
         print(json.dumps({"success": False, "error": str(e)}, ensure_ascii=False))
+
+
+def action_test_glossary(options_json):
+    """환경 설정에서 입력한 용어집 주소를 저장하기 전에 확인 (시트 열기·탭 찾기·헤더/항목 수). 아무것도 쓰지 않는다."""
+    from i2_sheet_registry import open_glossary_worksheet
+    try:
+        data = json.loads(options_json) if options_json else {}
+        url = (data.get("url") or "").strip()
+        _, sa = _glossary_target()
+        ws, info = open_glossary_worksheet(url, sa)
+        vals = ws.get_all_values()
+        headers = [h.strip() for h in (vals[0] if vals else [])]
+        total = sum(1 for r in vals[1:] if r and str(r[0]).strip()) if vals else 0
+        warnings = []
+        if info.get("note"):
+            warnings.append(info["note"])
+        if not headers:
+            warnings.append("탭이 비어 있습니다. 저장하면 이 탭에 용어집이 기록됩니다.")
+        elif headers[0].lower() not in ("korean", "한국어", "kor"):
+            warnings.append(f"첫 번째 열 제목이 'Korean'이 아닙니다 ('{headers[0]}'). 첫 열을 한국어 원문으로 사용합니다.")
+        print(json.dumps({
+            "success": True,
+            "source": info,
+            "total": total,
+            "languages": [h for h in headers[1:] if h],
+            "warnings": warnings,
+            "is_default": not url,
+        }, ensure_ascii=False))
+    except Exception as e:
+        print(json.dumps({"success": False, "error": str(e) or type(e).__name__}, ensure_ascii=False))
+
 
 def parse_latest_excel(target_path=None):
     file_path = target_path or EXCEL_PATH
@@ -972,7 +1052,7 @@ if __name__ == "__main__":
     parser.add_argument("--action", required=True, choices=[
         "list_sheets", "get_config", "save_config", "test_key", "detect_languages",
         "get_results", "run", "apply_excel", "get_glossary", "save_glossary", "clear_cache",
-        "test_service_account", "list_models"
+        "test_service_account", "list_models", "test_glossary"
     ])
     parser.add_argument("--options", default="")
     args = parser.parse_args()
@@ -1003,3 +1083,5 @@ if __name__ == "__main__":
         action_test_service_account(args.options)
     elif args.action == "list_models":
         action_list_models(args.options)
+    elif args.action == "test_glossary":
+        action_test_glossary(args.options)

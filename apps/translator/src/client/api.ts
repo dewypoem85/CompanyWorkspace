@@ -24,6 +24,16 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 export const DEFAULT_TEST_SHEET_URL =
   'https://docs.google.com/spreadsheets/d/1U3RiHe6Ww8SOFW9vs5ae5yrMHypiMIMEUVgMBc7jFf0/edit?gid=0#gid=0';
 
+// 실제로 연결된 용어집 시트 (엔진 open_glossary_worksheet 결과)
+export interface GlossarySource {
+  sheet_key: string;
+  sheet_title: string;
+  tab: string;
+  gid: number;
+  url: string;
+  note?: string;
+}
+
 export interface ScheduleConfig {
   enabled: boolean;
   time: string;
@@ -154,9 +164,20 @@ export const api = {
       rows: Array<Record<string, any>>;
       synced_from_sheet: boolean;
       total: number;
+      source?: GlossarySource | null;
+      sheet_error?: string;
+      sheet_empty?: boolean;
     }>(`/api/smart-translator/glossary${refresh ? '?refresh=true' : ''}`, { signal }),
-  saveGlossary: (payload: { headers: string[]; rows: Array<Record<string, any>> }, signal?: AbortSignal) =>
-    request<{ success: boolean; message: string; sheet_synced: boolean }>(
+  testGlossary: (url: string, signal?: AbortSignal) =>
+    request<{ success: boolean; source?: GlossarySource; total?: number; languages?: string[]; warnings?: string[]; is_default?: boolean; error?: string }>(
+      '/api/smart-translator/glossary/test',
+      { method: 'POST', body: JSON.stringify({ url }), signal }
+    ),
+  saveGlossary: (
+    payload: { headers: string[]; rows: Array<Record<string, any>>; expected_source?: GlossarySource | null; loaded_from_sheet?: boolean },
+    signal?: AbortSignal
+  ) =>
+    request<{ success: boolean; message: string; sheet_synced: boolean; sheet_skip_reason?: string; source_changed?: boolean; error?: string }>(
       '/api/smart-translator/glossary',
       {
         method: 'POST',

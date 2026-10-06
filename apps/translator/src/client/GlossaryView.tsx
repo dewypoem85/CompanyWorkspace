@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { api } from './api';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { api, type GlossarySource } from './api';
 
 interface GlossaryRow {
   id: number;
@@ -12,7 +12,8 @@ interface GlossaryRow {
   _isNew?: boolean;
 }
 
-export function GlossaryView() {
+// refreshKey: 환경 설정 저장 등으로 바뀌면 (편집 중이 아닐 때) 용어집을 다시 불러온다
+export function GlossaryView({ refreshKey = 0 }: { refreshKey?: number } = {}) {
   const [headers, setHeaders] = useState<string[]>([
     'Korean',
     'English',
@@ -28,6 +29,9 @@ export function GlossaryView() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  // 실제로 연결된 용어집 시트 (환경 설정 > 데이터 연결의 주소). 저장 시 같은 시트인지 서버에서 대조
+  const [source, setSource] = useState<GlossarySource | null>(null);
+  const [sheetError, setSheetError] = useState<string>('');
 
   // 페이지네이션
   const [page, setPage] = useState<number>(1);
@@ -43,6 +47,8 @@ export function GlossaryView() {
         if (res.headers && res.headers.length > 0) setHeaders(res.headers);
         setRows((res.rows as GlossaryRow[]) || []);
         setSyncedFromSheet(Boolean(res.synced_from_sheet));
+        setSource(res.source || null);
+        setSheetError(res.sheet_error || '');
         setIsDirty(false);
       } else {
         setMessage({ type: 'error', text: '용어집 데이터를 불러오지 못했습니다.' });
@@ -57,6 +63,15 @@ export function GlossaryView() {
   useEffect(() => {
     void loadData(false);
   }, []);
+
+  // 설정이 바뀌면 다시 불러오되, 저장하지 않은 편집은 지우지 않는다 (저장 시 서버가 시트 변경을 대조해 막음)
+  const lastRefreshKey = useRef(refreshKey);
+  useEffect(() => {
+    if (refreshKey === lastRefreshKey.current) return;
+    lastRefreshKey.current = refreshKey;
+    if (isDirty) return;
+    void loadData(false);
+  }, [refreshKey]);
 
   // 셀 값 수정
   const handleCellChange = (id: number, field: string, value: string) => {
@@ -108,16 +123,16 @@ export function GlossaryView() {
         return;
       }
 
-      const res = await api.saveGlossary({ headers, rows: cleanRows });
+      const res = await api.saveGlossary({ headers, rows: cleanRows, expected_source: source, loaded_from_sheet: syncedFromSheet });
       if (res.success) {
         setMessage({
           type: 'success',
-          text: res.message || '용어집이 성공적으로 저장 및 구글 시트에 동기화되었습니다.',
+          text: (res.message || '용어집이 저장되었습니다.') + (res.sheet_skip_reason ? ` — 시트 미반영: ${res.sheet_skip_reason}` : ''),
         });
         setIsDirty(false);
-        setSyncedFromSheet(Boolean(res.sheet_synced));
+        if (res.sheet_synced) setSyncedFromSheet(true);
       } else {
-        setMessage({ type: 'error', text: res.message || '용어집 저장 실패' });
+        setMessage({ type: 'error', text: res.error || res.message || '용어집 저장 실패' });
       }
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || '용어집 저장 중 오류가 발생했습니다.' });
@@ -169,7 +184,7 @@ export function GlossaryView() {
                 <i></i> 구글 시트 실시간 연결
               </span>
             ) : (
-              <span className="cw-state-pill" data-tone="warning">
+              <span className="cw-state-pill" data-tone="warning" title={sheetError || undefined}>
                 <i></i> 로컬 캐시 동기화
               </span>
             )}
@@ -181,6 +196,14 @@ export function GlossaryView() {
           </div>
           <p style={{ margin: '6px 0 0', color: 'var(--cw-muted)', fontSize: '0.92rem' }}>
             던전슬래셔 공식 다국어 용어집입니다. 웹에서 셀을 직접 편집하거나 추가/삭제 후 저장하면 구글 시트와 로컬 AI 검수 엔진에 즉시 반영됩니다.
+          </p>
+          <p style={{ margin: '4px 0 0', color: 'var(--cw-muted)', fontSize: '0.85rem' }}>
+            {source ? (
+              <>연결된 시트: <strong>'{source.sheet_title}' / 탭 '{source.tab}'</strong></>
+            ) : (
+              <>시트에 연결하지 못해 로컬 용어집 파일을 표시 중{sheetError ? ` (${sheetError})` : ''}</>
+            )}
+            {' · 주소 변경은 [환경 설정 > 데이터 연결]에서 합니다.'}
           </p>
         </div>
 
@@ -194,14 +217,11 @@ export function GlossaryView() {
           >
             {loading ? '⏳ 동기화 중…' : '🔄 시트 새로고침'}
           </button>
-          <a
-            href="https://docs.google.com/spreadsheets/d/1rrbDpylaH9580GkUYtrXEqNGr0OHuzIFQNlsSzK7QPI/edit#gid=181735466"
-            target="_blank"
-            rel="noreferrer"
-            className="cw-button"
-          >
-            🔗 구글 시트 원본 ↗
-          </a>
+          {source && (
+            <a href={source.url} target="_blank" rel="noreferrer" className="cw-button">
+              🔗 구글 시트 원본 ↗
+            </a>
+          )}
           <button type="button" className="cw-button" onClick={handleAddRow}>
             ➕ 새 용어 추가
           </button>

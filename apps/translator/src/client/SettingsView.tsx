@@ -72,6 +72,16 @@ export function SettingsView({ onConfigSaved, tab, onDirtyChange }: SettingsView
   const [testingSa, setTestingSa] = useState<boolean>(false);
   const [switchingSa, setSwitchingSa] = useState(false);
   const [saTestResult, setSaTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  // 용어집 시트 주소 (빈 값 = 기본 용어집). 저장하려면 현재 입력값으로 연결 테스트를 통과해야 함
+  const [glossaryUrl, setGlossaryUrl] = useState<string>('');
+  const [savedGlossaryUrl, setSavedGlossaryUrl] = useState<string>('');
+  const [testingGlossary, setTestingGlossary] = useState(false);
+  const [savingGlossary, setSavingGlossary] = useState(false);
+  const [glossaryTest, setGlossaryTest] = useState<
+    | { url: string; ok: true; title: string; tab: string; link: string; total: number; languages: string[]; warnings: string[] }
+    | { url: string; ok: false; error: string }
+    | null
+  >(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // 초기 설정 및 서비스 계정 목록 로드
@@ -94,6 +104,8 @@ export function SettingsView({ onConfigSaved, tab, onDirtyChange }: SettingsView
           });
           setTargetSheetUrl(cfg.target_sheet_url || '');
           setSavedSheetUrl(cfg.target_sheet_url || '');
+          setGlossaryUrl(cfg.glossary_sheet_url || '');
+          setSavedGlossaryUrl(cfg.glossary_sheet_url || '');
         }
         if (saRes.success) {
           setServiceAccounts(saRes.accounts || []);
@@ -372,6 +384,56 @@ export function SettingsView({ onConfigSaved, tab, onDirtyChange }: SettingsView
     }
   };
 
+  // 용어집 시트 주소 연결 테스트 (읽기만 함)
+  const handleTestGlossary = async () => {
+    const url = glossaryUrl.trim();
+    try {
+      setTestingGlossary(true);
+      setGlossaryTest(null);
+      const res = await api.testGlossary(url);
+      if (res.success && res.source) {
+        setGlossaryTest({
+          url,
+          ok: true,
+          title: res.source.sheet_title,
+          tab: res.source.tab,
+          link: res.source.url,
+          total: res.total ?? 0,
+          languages: res.languages || [],
+          warnings: res.warnings || [],
+        });
+      } else {
+        setGlossaryTest({ url, ok: false, error: res.error || '용어집 시트를 확인하지 못했습니다.' });
+      }
+    } catch (err: any) {
+      setGlossaryTest({ url, ok: false, error: `테스트 실패: ${err.message}` });
+    } finally {
+      setTestingGlossary(false);
+    }
+  };
+
+  // 용어집 시트 주소 저장 (현재 입력값으로 테스트를 통과한 경우에만)
+  const glossaryTestedOk = glossaryTest?.ok === true && glossaryTest.url === glossaryUrl.trim();
+  const handleSaveGlossaryUrl = async () => {
+    if (!glossaryTestedOk) return;
+    try {
+      setSavingGlossary(true);
+      setMessage(null);
+      const res = await api.saveConfig({ glossary_sheet_url: glossaryUrl.trim() });
+      if (res.success) {
+        setSavedGlossaryUrl(glossaryUrl.trim());
+        setMessage({ type: 'success', text: glossaryUrl.trim() ? '✅ 용어집 시트 주소가 저장되었습니다.' : '✅ 기본 용어집을 사용하도록 저장되었습니다.' });
+        if (onConfigSaved) onConfigSaved();
+      } else {
+        setMessage({ type: 'error', text: (res as any).error || res.message || '용어집 시트 주소 저장 실패' });
+      }
+    } catch (err: any) {
+      setMessage({ type: 'error', text: `용어집 시트 주소 저장 오류: ${err.message}` });
+    } finally {
+      setSavingGlossary(false);
+    }
+  };
+
   // 구글 서비스 계정 키 파일 삭제
   const handleDeleteSa = async (filename?: string) => {
     const target = filename || activeSa?.filename;
@@ -400,7 +462,7 @@ export function SettingsView({ onConfigSaved, tab, onDirtyChange }: SettingsView
   };
 
   const dirtyByTab: Record<SettingsTab, boolean> = {
-    connection: targetSheetUrl.trim() !== savedSheetUrl.trim(),
+    connection: targetSheetUrl.trim() !== savedSheetUrl.trim() || glossaryUrl.trim() !== savedGlossaryUrl.trim(),
     ai: Boolean(claudeKey.trim() || geminiKey.trim() || openaiKey.trim()),
     schedule: scheduleDirty,
   };
@@ -480,6 +542,68 @@ export function SettingsView({ onConfigSaved, tab, onDirtyChange }: SettingsView
           {saTestResult && (
             <div style={{ marginTop: '12px', padding: '10px 14px', background: saTestResult.ok ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', border: `1px solid ${saTestResult.ok ? '#22c55e' : 'var(--cw-danger)'}`, borderRadius: '6px', fontSize: '0.85rem', color: saTestResult.ok ? '#22c55e' : 'var(--cw-danger)' }}>
               {saTestResult.ok ? '✅ ' : '⚠️ '}{saTestResult.msg}
+            </div>
+          )}
+        </div>
+
+        {/* 1-1) 용어집 시트 주소: 번역·검수 파이프라인과 용어집 화면이 함께 사용 */}
+        <div style={{ padding: '16px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--cw-line)', borderRadius: '6px', marginBottom: '16px' }}>
+          <label htmlFor="glossary-sheet-url" style={{ display: 'block', fontSize: '0.92rem', fontWeight: 600, marginBottom: '8px' }}>
+            📖 용어집 시트 주소 (번역·검수 시 강제 적용하는 고유명사 용어집)
+          </label>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              id="glossary-sheet-url"
+              type="text"
+              className="cw-form-control"
+              style={{ flex: 1, minWidth: '320px' }}
+              placeholder="비워 두면 기본 용어집 사용 · https://docs.google.com/spreadsheets/d/.../edit#gid=..."
+              value={glossaryUrl}
+              onChange={(e) => setGlossaryUrl(e.target.value)}
+            />
+            <button
+              type="button"
+              className="cw-button"
+              onClick={handleTestGlossary}
+              disabled={testingGlossary}
+              title="시트를 열어 용어집 탭, 항목 수, 언어 열을 확인합니다. (시트는 수정하지 않음)"
+            >
+              {testingGlossary ? '⏳ 확인 중…' : '🔍 연결 테스트'}
+            </button>
+            <button
+              type="button"
+              className="cw-button"
+              data-variant="primary"
+              onClick={handleSaveGlossaryUrl}
+              disabled={savingGlossary || glossaryUrl.trim() === savedGlossaryUrl.trim() || !glossaryTestedOk}
+              title={glossaryTestedOk ? '용어집 시트 주소를 환경 설정에 저장합니다.' : '먼저 현재 주소로 연결 테스트를 통과해야 저장할 수 있습니다.'}
+            >
+              {savingGlossary ? '저장 중…' : '💾 저장'}
+            </button>
+          </div>
+          <div style={{ marginTop: '10px', fontSize: '0.84rem', color: 'var(--cw-text-soft)', lineHeight: 1.6 }}>
+            <div>
+              현재 사용: <strong>{savedGlossaryUrl.trim() ? savedGlossaryUrl : '기본 용어집'}</strong>
+            </div>
+            <div>
+              주소에 탭(<code>gid=</code>)이 있으면 그 탭을, 없으면 <code>Glossary</code> 또는 <code>번역키</code> 탭을 사용합니다. 아래 서비스 계정 키(없으면 용어집 전용 기본 키)로 접근하므로 시트를 키의 이메일에 공유해야 합니다.
+            </div>
+            <div>저장하려면 먼저 입력한 주소로 연결 테스트를 통과해야 합니다. 시트에 접근하지 못하면 번역은 로컬 용어집 파일로 대체됩니다.</div>
+          </div>
+          {glossaryTest && glossaryTest.url === glossaryUrl.trim() && (
+            <div role="status" style={{ marginTop: '12px', padding: '10px 14px', background: glossaryTest.ok ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', border: `1px solid ${glossaryTest.ok ? '#22c55e' : 'var(--cw-danger)'}`, borderRadius: '6px', fontSize: '0.85rem', color: glossaryTest.ok ? '#22c55e' : 'var(--cw-danger)' }}>
+              {glossaryTest.ok ? (
+                <>
+                  ✅ '{glossaryTest.title}' / 탭 '{glossaryTest.tab}' · 항목 {glossaryTest.total}개
+                  {glossaryTest.languages.length > 0 && ` · 언어 ${glossaryTest.languages.join(', ')}`}{' '}
+                  <a href={glossaryTest.link} target="_blank" rel="noreferrer">시트 열기 ↗</a>
+                  {glossaryTest.warnings.map((w) => (
+                    <div key={w} style={{ color: 'var(--cw-warning)' }}>⚠️ {w}</div>
+                  ))}
+                </>
+              ) : (
+                <>⚠️ {glossaryTest.error}</>
+              )}
             </div>
           )}
         </div>
