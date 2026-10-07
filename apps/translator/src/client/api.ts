@@ -24,6 +24,23 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 export const DEFAULT_TEST_SHEET_URL =
   'https://docs.google.com/spreadsheets/d/1U3RiHe6Ww8SOFW9vs5ae5yrMHypiMIMEUVgMBc7jFf0/edit?gid=0#gid=0';
 
+// 결과 화면의 실행 선택 목록 항목 (서버 RunMeta)
+export interface RunMeta {
+  id: string;
+  mode: 'main' | 'test';
+  trigger: 'screen' | 'schedule' | 'schedule-now';
+  started_at: string | null;
+  completed_at: string | null;
+  status: 'success' | 'error';
+  error: string | null;
+  operation_mode: string;
+  target: string;
+  languages: string[];
+  summary: { new: number; corrected: number; suggested: number; passed: number; total: number } | null;
+  total_issues: number;
+  has_report: boolean;
+}
+
 // 실제로 연결된 용어집 시트 (엔진 open_glossary_worksheet 결과)
 export interface GlossarySource {
   sheet_key: string;
@@ -83,6 +100,14 @@ export const api = {
     request<{ success: boolean; config: any }>('/api/smart-translator/config', { signal }),
   getResults: (mode: 'main' | 'test' = 'main', signal?: AbortSignal) =>
     request<{ success: boolean; data: any }>(`/api/smart-translator/results?mode=${mode}`, { signal }),
+  // 보관된 지난 실행의 결과 (실행 ID는 getRuns 목록의 id)
+  getRunResults: (mode: 'main' | 'test', runId: string, signal?: AbortSignal) =>
+    request<{ success: boolean; data: any; message?: string }>(
+      `/api/smart-translator/results?mode=${mode}&run=${encodeURIComponent(runId)}`,
+      { signal }
+    ),
+  getRuns: (mode: 'main' | 'test' = 'main', signal?: AbortSignal) =>
+    request<{ success: boolean; runs: RunMeta[] }>(`/api/smart-translator/runs?mode=${mode}`, { signal }),
   clearResults: (mode: 'main' | 'test' = 'main', signal?: AbortSignal) =>
     request<{ success: boolean; message: string }>(`/api/smart-translator/results/clear?mode=${mode}`, {
       method: 'POST',

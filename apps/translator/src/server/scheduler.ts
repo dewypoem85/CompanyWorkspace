@@ -238,7 +238,7 @@ export function runScheduleNow(trigger: 'schedule' | 'manual', opts: { dryRun?: 
     return mk('dry-run', `시뮬레이션: 번역 엔진을 시작하지 않고 작업 옵션만 확인했습니다. (${desc})`);
   }
 
-  const result = startJobInternal(options);
+  const result = startJobInternal(options, trigger === 'schedule' ? 'schedule' : 'schedule-now');
   if (!result.ok) return mk('skipped', result.error);
   pendingTrigger = trigger;
   pendingContext = { target: describeTarget(cfg), operation_mode: cfg.operation_mode, languages: cfg.languages };

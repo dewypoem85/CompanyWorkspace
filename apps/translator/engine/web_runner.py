@@ -682,6 +682,16 @@ def action_get_results(options_json=None):
         opts = json.loads(options_json) if options_json else {}
         mode = opts.get("mode", "main")
         target_file = os.path.join(paths.OUTPUT_DIR, "audit_report_테스트_결과.xlsx" if mode == "test" else "audit_report_전수검사_결과.xlsx")
+        run_id = opts.get("run_id")
+        if run_id:
+            # 보관된 지난 실행 보고서 (서버와 같은 형식만 허용해 runs 폴더 밖 경로 접근을 막음)
+            if not re.fullmatch(r"\d{8}_\d{6}(?:_\d+)?_(main|test)", str(run_id)) or not str(run_id).endswith("_" + mode):
+                print(json.dumps({"success": False, "error": "잘못된 실행 ID입니다."}, ensure_ascii=False))
+                return
+            target_file = os.path.join(paths.OUTPUT_DIR, "runs", f"{run_id}.xlsx")
+            if not os.path.exists(target_file):
+                print(json.dumps({"success": True, "data": None, "message": "보관 기간이 지나 이 실행의 결과 파일이 없습니다."}, ensure_ascii=False))
+                return
         data = parse_latest_excel(target_file)
         if data:
             print(json.dumps({"success": True, "data": data}, ensure_ascii=False))

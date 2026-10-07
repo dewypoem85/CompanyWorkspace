@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { api, DEFAULT_TEST_SHEET_URL } from './api';
+import { api, DEFAULT_TEST_SHEET_URL, type RunMeta } from './api';
 
 interface SheetInfo {
   name: string;
@@ -88,6 +88,27 @@ const MODEL_OPTIONS: Record<'gemini' | 'claude' | 'openai', string[]> = {
   ],
   openai: ['gpt-4o-mini (가성비 추천)', 'gpt-4o', 'gpt-4.1', 'gpt-4.1-mini'],
 };
+
+// 결과 화면 실행 선택 목록 표시
+const RUN_TRIGGER_LABEL: Record<RunMeta['trigger'], string> = { screen: '수동', schedule: '스케줄', 'schedule-now': '스케줄 즉시 실행' };
+const RUN_OPERATION_LABEL: Record<string, string> = { fill_empty: '빈 칸 채우기', inspect_only: '검수만', audit_apply: '검수+적용' };
+function formatRunTime(iso: string | null): string {
+  if (!iso) return '시각 미상';
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function runProcessedCount(r: RunMeta): number | null {
+  return r.summary ? r.summary.new + r.summary.corrected + r.summary.suggested : null;
+}
+function runLabel(r: RunMeta): string {
+  const head = `${formatRunTime(r.started_at)} · ${RUN_TRIGGER_LABEL[r.trigger] || r.trigger} · ${RUN_OPERATION_LABEL[r.operation_mode] || r.operation_mode}`;
+  if (r.status === 'error') return `${head} · 오류`;
+  if (!r.summary) return `${head} · ${r.total_issues}건`;
+  return runProcessedCount(r) === 0
+    ? `${head} · 처리할 항목 없음`
+    : `${head} · 신규 ${r.summary.new} · 교정 ${r.summary.corrected} · 제안 ${r.summary.suggested}`;
+}
 
 type ModelProvider = 'gemini' | 'claude' | 'openai';
 // 제공자 선택 시 기본으로 고르는 모델 (Gemini 는 자동 감지)
@@ -246,6 +267,21 @@ export function SmartTranslatorView({
   // 작업 상태 및 결과
   const [job, setJob] = useState<JobState | null>(null);
   const [results, setResults] = useState<ExcelResults | null>(null);
+  // 실행별 결과 보관 목록과 지금 보고 있는 지난 실행 (null = 최신 결과)
+  const [runs, setRuns] = useState<RunMeta[]>([]);
+  const [viewRunId, setViewRunIdState] = useState<string | null>(null);
+  const viewRunIdRef = useRef<string | null>(null);
+  const viewSeqRef = useRef(0);
+  const setViewRunId = (id: string | null) => {
+    viewRunIdRef.current = id;
+    setViewRunIdState(id);
+  };
+  const refreshRuns = async () => {
+    try {
+      const r = await api.getRuns(isTestMode ? 'test' : 'main');
+      if (r.success) setRuns(r.runs || []);
+    } catch {}
+  };
   const [activeSheetTab, setActiveSheetTab] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'changed' | 'new' | 'corrected' | 'suggested' | 'passed' | 'all'>('changed');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -334,7 +370,10 @@ export function SmartTranslatorView({
         setConfiguredSheetTitle('');
       }
 
-      if (resultsRes.success && resultsRes.data) {
+      void refreshRuns();
+      if (viewRunIdRef.current) {
+        // 지난 실행 결과를 보는 중이면 화면 갱신(탭 이동 등)으로 최신 결과로 바꾸지 않는다
+      } else if (resultsRes.success && resultsRes.data) {
         setResults(resultsRes.data);
         const firstTab = Object.keys(resultsRes.data.sheets || {})[0];
         setActiveSheetTab((prev) => {
@@ -424,6 +463,7 @@ export function SmartTranslatorView({
               void loadResults();
               // 파일 I/O 기록 완료 보장을 위해 1초 후 재확인
               setTimeout(loadResults, 1000);
+              setTimeout(() => void refreshRuns(), 1000);
             }
           }
         } catch {}
@@ -677,6 +717,8 @@ export function SmartTranslatorView({
       setApplyMessage('');
       setResults(null); // 이전 결과 초기화
       setAppliedList(null); // 이전 적용 내역 초기화
+      setViewRunId(null); // 진행 상황과 새 결과를 보도록 최신 결과 보기로 복귀
+      viewSeqRef.current++;
       const res = await api.startJob({ ...options, isTestMode });
       if (res.success) {
         const stRes = await api.getStatus(isTestMode ? 'test' : 'main');
@@ -768,6 +810,30 @@ export function SmartTranslatorView({
       setErrorMessage(`캐시 삭제 오류: ${err.message}`);
     } finally {
       setActionBusy(false);
+    }
+  };
+
+  // 결과 화면 위쪽 실행 목록에서 실행 선택 (null = 최신 결과). 늦게 온 이전 선택 응답은 버린다
+  const selectRun = async (id: string | null) => {
+    const seq = ++viewSeqRef.current;
+    setViewRunId(id);
+    setAppliedList(null);
+    setErrorMessage('');
+    try {
+      const mode = isTestMode ? 'test' : 'main';
+      const res = id ? await api.getRunResults(mode, id) : await api.getResults(mode);
+      if (seq !== viewSeqRef.current) return;
+      if (res.success && res.data) {
+        setResults(res.data);
+        const firstTab = Object.keys(res.data.sheets || {})[0];
+        setActiveSheetTab((prev) => (prev && res.data.sheets?.[prev] ? prev : firstTab || ''));
+      } else {
+        setResults(null);
+        setActiveSheetTab('');
+        if (id) setErrorMessage((res as any).message || '이 실행의 결과 파일을 찾을 수 없습니다.');
+      }
+    } catch (err: any) {
+      if (seq === viewSeqRef.current) setErrorMessage(err.message || '실행 결과를 불러오지 못했습니다.');
     }
   };
 
@@ -880,7 +946,7 @@ export function SmartTranslatorView({
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          {results && (
+          {results && !viewRunId && (
             <button
               type="button"
               className="cw-button"
@@ -904,9 +970,9 @@ export function SmartTranslatorView({
           </button>
           {results && (
             <a
-              href={`/api/smart-translator/download-excel?mode=${isTestMode ? 'test' : 'main'}`}
+              href={`/api/smart-translator/download-excel?mode=${isTestMode ? 'test' : 'main'}${viewRunId ? `&run=${viewRunId}` : ''}`}
               className="cw-button"
-              download={isTestMode ? 'audit_report_전수검사_결과_테스트.xlsx' : 'audit_report_전수검사_결과.xlsx'}
+              download={viewRunId ? `audit_report_${viewRunId}.xlsx` : isTestMode ? 'audit_report_전수검사_결과_테스트.xlsx' : 'audit_report_전수검사_결과.xlsx'}
             >
               📥 엑셀 보고서 다운로드
             </a>
@@ -1538,6 +1604,61 @@ export function SmartTranslatorView({
         </section>
       )}
 
+      {/* 3-1. 실행 결과 선택 (수동·스케줄 실행별 보관 결과) */}
+      {runs.length > 0 && !job?.running && (
+        <section style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', margin: '16px 0 0' }}>
+          <label htmlFor={`run-select-${isTestMode ? 'test' : 'main'}`}>
+            <strong>실행 결과</strong>
+          </label>
+          <select
+            id={`run-select-${isTestMode ? 'test' : 'main'}`}
+            className="cw-form-control"
+            style={{ flex: '1 1 320px', maxWidth: '560px' }}
+            value={viewRunId ?? ''}
+            onChange={(e) => void selectRun(e.target.value || null)}
+          >
+            <option value="">최신 결과</option>
+            {runs.map((r) => (
+              <option key={r.id} value={r.id} disabled={!r.has_report}>
+                {runLabel(r)}
+                {!r.has_report ? ' (결과 파일 없음)' : ''}
+              </option>
+            ))}
+          </select>
+        </section>
+      )}
+      {(() => {
+        const viewRun = viewRunId ? runs.find((r) => r.id === viewRunId) : null;
+        if (viewRunId) {
+          return (
+            <div role="status" style={{ margin: '12px 0 0', padding: '12px 16px', border: '1px solid var(--cw-line)', borderRadius: '8px', background: 'var(--cw-surface)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+              <span>
+                📂 지난 실행 결과를 보고 있습니다 — <strong>{viewRun ? runLabel(viewRun) : viewRunId}</strong>
+                <span style={{ color: 'var(--cw-muted)' }}> (이미 처리된 기록 · 보기 전용, 시트 반영과 결과 초기화는 최신 결과에서만 가능)</span>
+              </span>
+              <button type="button" className="cw-button" onClick={() => void selectRun(null)}>
+                최신 결과로 돌아가기
+              </button>
+            </div>
+          );
+        }
+        const latest = runs[0];
+        if (!latest || job?.running) return null;
+        let text = '';
+        if (latest.status === 'error') {
+          text = `⚠️ ${formatRunTime(latest.started_at)} ${RUN_TRIGGER_LABEL[latest.trigger]} 실행 오류: ${latest.error || '알 수 없는 오류'}${results ? ' — 아래는 이전 실행의 결과입니다.' : ''}`;
+        } else if (runProcessedCount(latest) === 0) {
+          text = `✅ ${formatRunTime(latest.started_at)} ${RUN_TRIGGER_LABEL[latest.trigger]} 실행 · 처리할 항목 없음 — 지난 결과는 위 실행 목록에서 선택하세요.`;
+        } else if (!latest.has_report && results) {
+          text = `ℹ️ ${formatRunTime(latest.started_at)} ${RUN_TRIGGER_LABEL[latest.trigger]} 실행은 새 결과 파일을 만들지 않았습니다 — 아래는 이전 실행의 결과입니다.`;
+        }
+        return text ? (
+          <div role="status" style={{ margin: '12px 0 0', padding: '12px 16px', border: '1px solid var(--cw-line)', borderRadius: '8px', background: 'var(--cw-surface)' }}>
+            {text}
+          </div>
+        ) : null;
+      })()}
+
       {/* 4. 결과 요약 카드 */}
       {results?.summary && (
         <section className="metric-grid" style={{ margin: '16px 0' }}>
@@ -1704,7 +1825,7 @@ export function SmartTranslatorView({
       )}
 
       {/* 5-2. 일괄 반영 컨트롤 배너 (전수 검사 [확인 전용] 모드 & 결과 있을 때만 노출) */}
-      {!isApplying && appliedList === null && results && operationMode === 'inspect_only' && (
+      {!isApplying && appliedList === null && results && !viewRunId && operationMode === 'inspect_only' && (
         <section
           style={{
             margin: '16px 0',
@@ -1856,17 +1977,19 @@ export function SmartTranslatorView({
                 {statusFilter === 'changed' ? '⚡ 변경된 항목만 표시 중: ' : '항목 표시 중: '}
                 <strong style={{ color: 'var(--cw-text)', fontSize: '1rem' }}>{formatNumber.format(currentRows.length)}</strong>건
               </div>
-              <button
-                type="button"
-                className="cw-button"
-                data-variant="outline"
-                style={{ padding: '4px 10px', fontSize: '0.82rem' }}
-                onClick={handleClearResults}
-                disabled={job?.running || actionBusy}
-                title="현재 검수 결과를 초기화합니다."
-              >
-                🧹 결과 초기화
-              </button>
+              {!viewRunId && (
+                <button
+                  type="button"
+                  className="cw-button"
+                  data-variant="outline"
+                  style={{ padding: '4px 10px', fontSize: '0.82rem' }}
+                  onClick={handleClearResults}
+                  disabled={job?.running || actionBusy}
+                  title="현재 검수 결과를 초기화합니다."
+                >
+                  🧹 결과 초기화
+                </button>
+              )}
             </div>
           </div>
 

@@ -24,6 +24,7 @@ import {
   handleDeleteServiceAccount,
   handleTestServiceAccount,
   handleClearResults,
+  handleGetRuns,
 } from './smart-translator.js';
 import { handleGetSchedule, handleSaveSchedule, handleRunSchedule, startScheduler } from './scheduler.js';
 
@@ -81,6 +82,7 @@ app.post('/api/smart-translator/glossary', asyncRoute(handleSaveGlossary));
 app.post('/api/smart-translator/glossary/test', asyncRoute(handleTestGlossary));
 app.get('/api/smart-translator/results', asyncRoute(handleGetResults));
 app.post('/api/smart-translator/results/clear', asyncRoute(handleClearResults));
+app.get('/api/smart-translator/runs', handleGetRuns);
 app.get('/api/smart-translator/status', handleGetStatus);
 app.post('/api/smart-translator/start', handleStartJob);
 app.post('/api/smart-translator/apply', asyncRoute(handleApplyExcel));

@@ -32,6 +32,89 @@ const RUNNER_SCRIPT = path.join(SMART_TRANSLATOR_DIR, 'web_runner.py');
 const EXCEL_REPORT_PATH = path.join(OUTPUT_DIR, 'audit_report_전수검사_결과.xlsx');
 const EXCEL_TEST_REPORT_PATH = path.join(OUTPUT_DIR, 'audit_report_테스트_결과.xlsx');
 
+// ── 실행별 결과 보관 ─────────────────────────────────────────────
+// 결과 보고서는 실행마다 같은 파일을 덮어쓰므로, 실행이 끝날 때 보고서 사본과 실행 정보를 남겨
+// 결과 화면에서 지난 실행(수동·스케줄)을 골라 볼 수 있게 한다. 모드별 최근 MAX_RUNS 회만 보관.
+export const RUNS_DIR = path.join(OUTPUT_DIR, 'runs');
+const MAX_RUNS = 30;
+const RUN_ID_PATTERN = /^\d{8}_\d{6}(?:_\d+)?_(main|test)$/;
+export type RunTrigger = 'screen' | 'schedule' | 'schedule-now';
+
+export interface RunMeta {
+  id: string;
+  mode: 'main' | 'test';
+  trigger: RunTrigger;
+  started_at: string | null;
+  completed_at: string | null;
+  status: 'success' | 'error';
+  error: string | null;
+  operation_mode: string;
+  target: string;
+  languages: string[];
+  summary: RunSummary | null;
+  total_issues: number;
+  has_report: boolean; // 이 실행이 새 결과 보고서를 만들었는지 (없으면 화면의 최신 결과는 이전 실행 것)
+}
+
+function reportPathFor(mode: 'main' | 'test'): string {
+  return mode === 'test' ? EXCEL_TEST_REPORT_PATH : EXCEL_REPORT_PATH;
+}
+
+export function isValidRunId(id: unknown, mode?: 'main' | 'test'): id is string {
+  if (typeof id !== 'string') return false;
+  const m = RUN_ID_PATTERN.exec(id);
+  return !!m && (!mode || m[1] === mode);
+}
+
+function runIdFor(startedAt: string | null, mode: 'main' | 'test'): string {
+  const d = startedAt ? new Date(startedAt) : new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  const base = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  let id = `${base}_${mode}`;
+  for (let i = 2; fs.existsSync(path.join(RUNS_DIR, `${id}.json`)); i++) id = `${base}_${i}_${mode}`;
+  return id;
+}
+
+export function listRuns(mode: 'main' | 'test'): RunMeta[] {
+  if (!fs.existsSync(RUNS_DIR)) return [];
+  const out: RunMeta[] = [];
+  for (const f of fs.readdirSync(RUNS_DIR)) {
+    if (!f.endsWith('.json') || !isValidRunId(f.slice(0, -5), mode)) continue;
+    try {
+      const meta = JSON.parse(fs.readFileSync(path.join(RUNS_DIR, f), 'utf-8')) as RunMeta;
+      meta.has_report = meta.has_report && fs.existsSync(path.join(RUNS_DIR, `${meta.id}.xlsx`));
+      out.push(meta);
+    } catch {}
+  }
+  return out.sort((a, b) => (a.id < b.id ? 1 : -1));
+}
+
+function pruneRuns(mode: 'main' | 'test'): void {
+  for (const old of listRuns(mode).slice(MAX_RUNS)) {
+    for (const ext of ['.json', '.xlsx']) {
+      try {
+        fs.rmSync(path.join(RUNS_DIR, old.id + ext), { force: true });
+      } catch {}
+    }
+  }
+}
+
+function archiveRun(base: Omit<RunMeta, 'id' | 'has_report'>, startedAtMs: number): void {
+  try {
+    fs.mkdirSync(RUNS_DIR, { recursive: true });
+    const id = runIdFor(base.started_at, base.mode);
+    const report = reportPathFor(base.mode);
+    // 이 실행 중에 새로 기록된 보고서만 보관 (실패해서 이전 보고서가 남아 있는 경우는 복사하지 않음)
+    const hasReport = fs.existsSync(report) && fs.statSync(report).mtimeMs >= startedAtMs - 2000;
+    if (hasReport) fs.copyFileSync(report, path.join(RUNS_DIR, `${id}.xlsx`));
+    const meta: RunMeta = { ...base, id, has_report: hasReport };
+    fs.writeFileSync(path.join(RUNS_DIR, `${id}.json`), JSON.stringify(meta, null, 2), 'utf-8');
+    pruneRuns(base.mode);
+  } catch (err: any) {
+    console.warn(`[Runs] 실행 결과 보관 실패: ${err?.message || err}`);
+  }
+}
+
 // 예전 구조(모두 루트)의 파일을 새 폴더로 한 번 이동 (engine/paths.py 의 migrate_legacy_files 와 같은 규칙, 대상에 이미 있으면 건드리지 않음)
 function migrateLegacyLayout(): void {
   try {
@@ -421,7 +504,14 @@ export async function handleDetectLanguages(req: Request, res: Response): Promis
 
 export async function handleGetResults(req: Request, res: Response): Promise<void> {
   const mode = req.query.mode === 'test' ? 'test' : 'main';
-  const targetPath = mode === 'test' ? EXCEL_TEST_REPORT_PATH : EXCEL_REPORT_PATH;
+  const runId = req.query.run;
+  if (runId !== undefined && !isValidRunId(runId, mode)) {
+    res.status(400).json({ success: false, error: '잘못된 실행 ID입니다.' });
+    return;
+  }
+  // run 이 있으면 보관된 지난 실행의 보고서 (내용이 바뀌지 않으므로 실행 ID로 캐시)
+  const targetPath = runId ? path.join(RUNS_DIR, `${runId}.xlsx`) : mode === 'test' ? EXCEL_TEST_REPORT_PATH : EXCEL_REPORT_PATH;
+  const cacheKey = runId ? `run:${runId}` : mode;
 
   // 해당 모드의 결과 파일이 없으면 즉시 null 반환 (메인 모드에 테스트 모드 결과가 노출되지 않도록 엄격 분리!)
   if (!fs.existsSync(targetPath)) {
@@ -434,18 +524,28 @@ export async function handleGetResults(req: Request, res: Response): Promise<voi
     const stat = fs.statSync(targetPath);
     const parserMtime = fs.existsSync(RUNNER_SCRIPT) ? fs.statSync(RUNNER_SCRIPT).mtimeMs : 0;
     const cacheStamp = stat.mtimeMs + parserMtime;
-    const cached = resultsCacheMap.get(mode);
+    const cached = resultsCacheMap.get(cacheKey);
     if (cached && cached.mtimeMs === cacheStamp) {
       res.json(cached.data);
       return;
     }
 
-    const raw = await runPythonCommand(['--action', 'get_results', '--options', JSON.stringify({ mode })]);
+    const raw = await runPythonCommand(['--action', 'get_results', '--options', JSON.stringify(runId ? { mode, run_id: runId } : { mode })]);
     const data = JSON.parse(raw);
     if (data.success) {
-      resultsCacheMap.set(mode, { mtimeMs: cacheStamp, data });
+      resultsCacheMap.set(cacheKey, { mtimeMs: cacheStamp, data });
     }
     res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+// 결과 화면의 실행 선택 목록 (모드별, 최신순)
+export function handleGetRuns(req: Request, res: Response): void {
+  const mode = req.query.mode === 'test' ? 'test' : 'main';
+  try {
+    res.json({ success: true, runs: listRuns(mode) });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -522,7 +622,7 @@ export function handleStartJob(req: Request, res: Response): void {
 }
 
 // 수동 시작과 예약 실행이 같은 경로로 번역 작업을 시작
-export function startJobInternal(options: any): { ok: true } | { ok: false; error: string } {
+export function startJobInternal(options: any, trigger: RunTrigger = 'screen'): { ok: true } | { ok: false; error: string } {
   if (currentJob.running) {
     return { ok: false, error: '이미 다른 번역/검수 작업이 진행 중입니다.' };
   }
@@ -542,6 +642,13 @@ export function startJobInternal(options: any): { ok: true } | { ok: false; erro
   currentJob.error = null;
   currentJob.totalIssues = 0;
   currentJob.summary = null;
+  const startedAtMs = Date.now();
+  const runContext = {
+    trigger,
+    operation_mode: String(options.operation_mode || 'fill_empty'),
+    target: String((mode === 'test' ? options.target_sheet_url : options.i2_selected_sheet || options.target_sheet_url) || ''),
+    languages: Array.isArray(options.target_languages) ? options.target_languages.map(String) : [],
+  };
 
   activeProcess = spawn('python', [RUNNER_SCRIPT, '--action', 'run', '--options', JSON.stringify(options)], {
     cwd: SMART_TRANSLATOR_DIR,
@@ -621,6 +728,20 @@ export function startJobInternal(options: any): { ok: true } | { ok: false; erro
       totalIssues: currentJob.totalIssues,
       summary: currentJob.summary,
     };
+    archiveRun(
+      {
+        ...runContext,
+        mode,
+        started_at: info.startedAt,
+        completed_at: info.completedAt,
+        status: info.error ? 'error' : 'success',
+        error: info.error,
+        summary: info.summary,
+        total_issues: info.totalIssues,
+      },
+      startedAtMs
+    );
+    resultsCacheMap.delete(mode);
     for (const listener of jobFinishListeners) {
       try {
         listener(info);
@@ -666,8 +787,15 @@ export async function handleApplyExcel(req: Request, res: Response): Promise<voi
 
 export function handleDownloadExcel(req: Request, res: Response): void {
   const isTest = req.query.mode === 'test';
-  const filePath = isTest ? EXCEL_TEST_REPORT_PATH : EXCEL_REPORT_PATH;
-  const fileName = isTest ? 'audit_report_전수검사_결과_테스트.xlsx' : 'audit_report_전수검사_결과.xlsx';
+  const runId = req.query.run;
+  if (runId !== undefined && !isValidRunId(runId, isTest ? 'test' : 'main')) {
+    res.status(400).json({ success: false, error: '잘못된 실행 ID입니다.' });
+    return;
+  }
+  const filePath = runId ? path.join(RUNS_DIR, `${runId}.xlsx`) : isTest ? EXCEL_TEST_REPORT_PATH : EXCEL_REPORT_PATH;
+  const fileName = runId
+    ? `audit_report_${runId}.xlsx`
+    : isTest ? 'audit_report_전수검사_결과_테스트.xlsx' : 'audit_report_전수검사_결과.xlsx';
 
   if (!fs.existsSync(filePath)) {
     res.status(404).json({ success: false, error: '생성된 엑셀 보고서 파일이 없습니다.' });
